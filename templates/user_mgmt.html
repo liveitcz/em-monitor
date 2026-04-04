@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Správa uživatelů - PoE Monitor</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        .header {
+            background: white;
+            padding: 24px 30px;
+            border-radius: 10px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { color: #333; font-size: 24px; }
+        .back-link { color: #667eea; text-decoration: none; font-weight: 600; }
+        .back-link:hover { text-decoration: underline; }
+
+        .two-col { display: grid; grid-template-columns: 1fr 1.6fr; gap: 24px; }
+
+        .card {
+            background: white;
+            padding: 28px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .card h2 {
+            color: #374151;
+            font-size: 18px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .form-group { margin-bottom: 16px; }
+        .form-group label {
+            display: block;
+            color: #374151;
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1.5px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+        }
+
+        .btn {
+            padding: 9px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { background: #5568d3; }
+        .btn-sm { padding: 5px 12px; font-size: 12px; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-secondary { background: #e5e7eb; color: #374151; }
+        .btn-secondary:hover { background: #d1d5db; }
+
+        .users-table { width: 100%; border-collapse: collapse; }
+        .users-table th {
+            background: #f3f4f6;
+            color: #374151;
+            font-weight: 600;
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 13px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .users-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 13px;
+            vertical-align: middle;
+        }
+        .users-table tr:hover td { background: #fafafa; }
+
+        .role-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .role-admin    { background: #fef3c7; color: #92400e; }
+        .role-operator { background: #dbeafe; color: #1e40af; }
+
+        .status-active   { color: #059669; font-weight: 600; }
+        .status-inactive { color: #dc2626; font-weight: 600; }
+
+        .alert {
+            padding: 10px 14px;
+            border-radius: 6px;
+            margin: 12px 0 0;
+            font-size: 13px;
+            display: none;
+        }
+        .alert-success { background: #d1fae5; color: #065f46; }
+        .alert-error   { background: #fee2e2; color: #991b1b; }
+
+        /* Edit modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 10px;
+            padding: 28px;
+            width: 420px;
+            max-width: 95vw;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        .modal h3 { color: #374151; margin-bottom: 18px; font-size: 17px; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+    
+        /* Lang switcher */
+        .em-lang-switch { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: #6b7280; user-select: none; }
+        .em-lang-btn { cursor: pointer; padding: 2px 8px; border-radius: 4px; transition: all 0.15s; font-weight: 600; }
+        .em-lang-btn:hover { background: #f3f4f6; color: #4f46e5; }
+        .em-lang-sep { opacity: 0.35; margin: 0 1px; }
+</style>
+    <script src="{{ url_for('static', filename='js/i18n.js') }}" defer></script>
+</head>
+<body>
+<div class="container">
+
+    <div class="header">
+        <h1 data-i18n="user_mgmt.title">👥 Správa uživatelů</h1>
+        <div style="display:flex;align-items:center;gap:12px;">
+            <a href="/" class="back-link" data-i18n="user_mgmt.back_overview">← Zpět na přehled</a>
+            <span class="em-lang-switch">
+                <span class="em-lang-btn" id="em-lang-cs" onclick="window.emI18n && window.emI18n.setLang('cs')">CZ</span>
+                <span class="em-lang-sep">|</span>
+                <span class="em-lang-btn" id="em-lang-en" onclick="window.emI18n && window.emI18n.setLang('en')">EN</span>
+            </span>
+        </div>
+    </div>
+
+    <div class="two-col">
+
+        <!-- Add user -->
+        <div class="card">
+            <h2 data-i18n="user_mgmt.add_user">➕ Přidat uživatele</h2>
+            <div class="form-group">
+                <label data-i18n="user_mgmt.label_username">Uživatelské jméno *</label>
+                <input type="text" id="addUsername" data-i18n-placeholder="user_mgmt.placeholder_username" placeholder="např. jnovak">
+            </div>
+            <div class="form-group">
+                <label data-i18n="user_mgmt.label_password">Heslo *</label>
+                <input type="password" id="addPassword" data-i18n-placeholder="user_mgmt.placeholder_password" placeholder="Minimálně 4 znaky">
+            </div>
+            <div class="form-group">
+                <label data-i18n="user_mgmt.label_role">Role</label>
+                <select id="addRole">
+                    <option value="operator" id="opt-add-op">👤 Operátor</option>
+                    <option value="admin">🔑 Admin</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label data-i18n="user_mgmt.label_fullname">Celé jméno</label>
+                <input type="text" id="addFullName" placeholder="">
+            </div>
+            <div class="form-group">
+                <label data-i18n="user_mgmt.label_email">E-mail</label>
+                <input type="email" id="addEmail" placeholder="">
+            </div>
+            <button class="btn btn-primary" onclick="addUser()" data-i18n="user_mgmt.add_btn">➕ Přidat uživatele</button>
+            <div class="alert" id="addAlert"></div>
+        </div>
+
+        <!-- Users list -->
+        <div class="card">
+            <h2 data-i18n="user_mgmt.users_list">📋 Seznam uživatelů</h2>
+            <div id="usersList">
+                <p style="color:#9ca3af;text-align:center;padding:20px;">Načítání...</p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Edit modal -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal">
+        <h3><span data-i18n="user_mgmt.edit_modal_title">✏️ Upravit uživatele:</span> <span id="editModalTitle"></span></h3>
+        <input type="hidden" id="editUsername">
+        <div class="form-group">
+            <label data-i18n="user_mgmt.label_role">Role</label>
+            <select id="editRole">
+                <option value="operator" id="opt-edit-op">👤 Operátor</option>
+                <option value="admin">🔑 Admin</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label data-i18n="user_mgmt.label_fullname">Celé jméno</label>
+            <input type="text" id="editFullName">
+        </div>
+        <div class="form-group">
+            <label data-i18n="user_mgmt.label_email">E-mail</label>
+            <input type="email" id="editEmail">
+        </div>
+        <div class="form-group">
+            <label><span data-i18n="user_mgmt.label_new_pwd">Nové heslo</span> <span style="color:#9ca3af;font-weight:400" data-i18n="user_mgmt.new_pwd_hint">(prázdné = beze změny)</span></label>
+            <input type="password" id="editNewPwd" data-i18n-placeholder="user_mgmt.placeholder_new_pwd" placeholder="Nechte prázdné pro zachování">
+        </div>
+        <div class="form-group">
+            <label data-i18n="user_mgmt.label_account_status">Stav účtu</label>
+            <select id="editActive">
+                <option value="1">✅ Aktivní</option>
+                <option value="0">🚫 Deaktivovaný</option>
+            </select>
+        </div>
+        <div class="alert" id="editAlert"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal()" data-i18n="user_mgmt.cancel_btn">Zrušit</button>
+            <button class="btn btn-primary" onclick="saveEdit()" data-i18n="user_mgmt.save_btn">💾 Uložit</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showAlert(id, msg, type) {
+        var el = document.getElementById(id);
+        el.textContent = msg;
+        el.className = 'alert alert-' + type;
+        el.style.display = 'block';
+        if (type === 'success') setTimeout(function() { el.style.display='none'; }, 4000);
+    }
+
+    function loadUsers() {
+        fetch('/api/admin/users')
+            .then(r => r.json())
+            .then(data => {
+                var users = data.users || [];
+                if (users.length === 0) {
+                    document.getElementById('usersList').innerHTML = '<p style="color:#9ca3af;text-align:center;padding:20px;">Žádní uživatelé</p>';
+                    return;
+                }
+                var html = '<table class="users-table"><thead><tr>' +
+                    (localStorage.getItem('em-lang')==='en' ? '<th>User</th><th>Role</th><th>Status</th><th>Last login</th><th>Actions</th>' : '<th>Uživatel</th><th>Role</th><th>Stav</th><th>Poslední login</th><th>Akce</th>') +
+                    '</tr></thead><tbody>';
+                users.forEach(function(u) {
+                    var roleClass = u.role === 'admin' ? 'role-admin' : 'role-operator';
+                    var roleLabel = u.role === 'admin' ? '🔑 Admin' : (_en ? '👤 Operator' : '👤 Operátor');
+                    var statusClass = u.is_active ? 'status-active' : 'status-inactive';
+                    var _en = localStorage.getItem('em-lang') === 'en';
+                    var statusLabel = u.is_active ? (_en ? '✅ Active' : '✅ Aktivní') : (_en ? '🚫 Inactive' : '🚫 Neaktivní');
+                    var lastLogin = '-';
+                    if (u.last_login) {
+                        var _d = u.last_login.replace('T',' ');
+                        var _parts = _d.substring(0,16).split(/[\- :]/);
+                        // parts: [YYYY, MM, DD, HH, MM]
+                        if (_parts.length >= 5) {
+                            lastLogin = _parts[2]+'-'+_parts[1]+'-'+_parts[0].substring(2)+' '+_parts[3]+':'+_parts[4];
+                        } else { lastLogin = _d.substring(0,16); }
+                    }
+                    html += '<tr>' +
+                        '<td><strong>' + u.username + '</strong>' + (u.full_name ? '<br><small style="color:#6b7280">' + u.full_name + '</small>' : '') + '</td>' +
+                        '<td><span class="role-badge ' + roleClass + '">' + roleLabel + '</span></td>' +
+                        '<td class="' + statusClass + '">' + statusLabel + '</td>' +
+                        '<td>' + lastLogin + '</td>' +
+                        '<td style="display:flex;gap:6px;flex-wrap:wrap;">' +
+                            '<button class="btn btn-sm btn-secondary" onclick="openEdit(' + JSON.stringify(u) + ')">✏️</button>' +
+                            '<button class="btn btn-sm btn-danger" onclick="deleteUser(\'' + u.username + '\')">🗑️</button>' +
+                        '</td>' +
+                        '</tr>';
+                });
+                html += '</tbody></table>';
+                document.getElementById('usersList').innerHTML = html;
+            })
+            .catch(function(e) {
+                document.getElementById('usersList').innerHTML = '<p style="color:#dc2626">Chyba: ' + e.message + '</p>';
+            });
+    }
+
+    function addUser() {
+        var data = {
+            username: document.getElementById('addUsername').value.trim(),
+            password: document.getElementById('addPassword').value,
+            role: document.getElementById('addRole').value,
+            full_name: document.getElementById('addFullName').value,
+            email: document.getElementById('addEmail').value
+        };
+        if (!data.username || !data.password) {
+            return showAlert('addAlert', '❌ Username a heslo jsou povinné', 'error');
+        }
+        fetch('/api/admin/users/add', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                showAlert('addAlert', '✅ ' + d.message, 'success');
+                document.getElementById('addUsername').value = '';
+                document.getElementById('addPassword').value = '';
+                document.getElementById('addFullName').value = '';
+                document.getElementById('addEmail').value = '';
+                document.getElementById('addRole').value = 'operator';
+                loadUsers();
+            } else {
+                showAlert('addAlert', '❌ ' + d.error, 'error');
+            }
+        })
+        .catch(e => showAlert('addAlert', '❌ ' + e.message, 'error'));
+    }
+
+    function deleteUser(username) {
+        if (!confirm('Opravdu smazat uživatele "' + username + '"?')) return;
+        fetch('/api/admin/users/delete', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username: username})
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) loadUsers();
+            else alert('Chyba: ' + d.error);
+        });
+    }
+
+    function openEdit(u) {
+        document.getElementById('editUsername').value = u.username;
+        document.getElementById('editModalTitle').textContent = u.username;
+        document.getElementById('editRole').value = u.role;
+        document.getElementById('editFullName').value = u.full_name || '';
+        document.getElementById('editEmail').value = u.email || '';
+        document.getElementById('editActive').value = u.is_active ? '1' : '0';
+        document.getElementById('editNewPwd').value = '';
+        document.getElementById('editAlert').style.display = 'none';
+        document.getElementById('editModal').classList.add('active');
+    }
+
+    function closeModal() {
+        document.getElementById('editModal').classList.remove('active');
+    }
+
+    function saveEdit() {
+        var data = {
+            username: document.getElementById('editUsername').value,
+            role: document.getElementById('editRole').value,
+            full_name: document.getElementById('editFullName').value,
+            email: document.getElementById('editEmail').value,
+            is_active: parseInt(document.getElementById('editActive').value)
+        };
+        var newPwd = document.getElementById('editNewPwd').value;
+        if (newPwd) data.new_password = newPwd;
+
+        fetch('/api/admin/users/update', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                closeModal();
+                loadUsers();
+            } else {
+                showAlert('editAlert', '❌ ' + d.error, 'error');
+            }
+        })
+        .catch(e => showAlert('editAlert', '❌ ' + e.message, 'error'));
+    }
+
+    // Close modal on overlay click
+    document.getElementById('editModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+
+    /* ── Lang change hook ── */
+    window.onLangChange = function(lang) {
+        var opText = (lang === 'en') ? '👤 Operator' : '👤 Operátor';
+        ['opt-add-op', 'opt-edit-op'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.textContent = opText;
+        });
+        // Rebuild users list with new lang
+        loadUsers();
+    };
+
+    loadUsers();
+</script>
+</body>
+</html>

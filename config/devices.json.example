@@ -1,0 +1,8 @@
+{
+  "slow_switches": {},
+  "slow_switch_delay": 0.3,
+  "devices": {
+    "192.168.1.1": "Switch-Core-1",
+    "192.168.1.2": "Switch-Floor-1"
+  }
+}

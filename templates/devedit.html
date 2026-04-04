@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Správa zařízení - PoE Monitor</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1800px; margin: 0 auto; }
+        
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            font-weight: bold;
+            margin: 0;
+        }
+        .header-buttons {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .back-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        .back-link:hover { text-decoration: underline; }
+        /* ---- User dropdown menu ---- */
+        .user-menu-wrap {
+            position: relative;
+            display: inline-block;
+        }
+        .user-menu-btn {
+            background: rgba(102,126,234,0.1);
+            border: 1.5px solid rgba(102,126,234,0.35);
+            color: #4f46e5;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+        .user-menu-btn:hover { background: rgba(102,126,234,0.18); }
+        .user-menu-btn .arrow { font-size: 10px; opacity: 0.7; }
+        .user-menu-dropdown {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: calc(100% + 6px);
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            min-width: 180px;
+            z-index: 1000;
+            overflow: hidden;
+        }
+        .user-menu-wrap:hover .user-menu-dropdown,
+        .user-menu-wrap.open .user-menu-dropdown { display: block; }
+        .user-menu-header {
+            padding: 12px 16px;
+            background: #f3f4f6;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 12px;
+            color: #6b7280;
+        }
+        .user-menu-header strong {
+            display: block;
+            color: #111827;
+            font-size: 14px;
+        }
+        .user-menu-item {
+            display: block;
+            padding: 10px 16px;
+            color: #374151;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background 0.15s;
+        }
+        .user-menu-item:hover { background: #f9fafb; color: #111827; }
+        .user-menu-item.danger { color: #dc2626; }
+        .user-menu-item.danger:hover { background: #fef2f2; }
+        .user-menu-divider { height: 1px; background: #e5e7eb; margin: 4px 0; }
+
+        
+        .two-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        .section {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+        }
+        .section h2 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        .section-content {
+            flex: 1;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            color: #374151;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .search-box {
+            margin-bottom: 15px;
+        }
+        .search-box input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn-container {
+            margin-top: auto;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        
+        .devices-list {
+            margin-bottom: 15px;
+            max-height: 480px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+        }
+        .device-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            border-bottom: 1px solid #e5e7eb;
+            transition: background 0.2s;
+        }
+        .device-item:last-child {
+            border-bottom: none;
+        }
+        .device-item:hover {
+            background: #f9fafb;
+        }
+        .device-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            margin-right: 12px;
+        }
+        .device-label {
+            font-size: 14px;
+            color: #1f2937;
+        }
+        .device-label strong {
+            font-weight: 600;
+        }
+        .device-label .ip {
+            color: #6b7280;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+    
+        /* Lang switcher */
+        .em-lang-switch { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: #6b7280; user-select: none; }
+        .em-lang-btn { cursor: pointer; padding: 2px 8px; border-radius: 4px; transition: all 0.15s; font-weight: 600; }
+        .em-lang-btn:hover { background: #f3f4f6; color: #4f46e5; }
+        .em-lang-sep { opacity: 0.35; margin: 0 1px; }
+</style>
+    <script src="{{ url_for('static', filename='js/i18n.js') }}" defer></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-top">
+                <h1 data-i18n="devedit.title">⚡ Správa zařízení</h1>
+                <div class="header-buttons">
+                    <a href="/add-remove" class="back-link" style="margin-right: 20px;" data-i18n="devedit.change_log">📋 LOG změn</a>
+                    <a href="/" class="back-link" data-i18n="devedit.back_overview">← Zpět na přehled</a>
+                <span class="em-lang-switch">
+                    <span class="em-lang-btn" id="em-lang-cs" onclick="window.emI18n && window.emI18n.setLang('cs')">CZ</span>
+                    <span class="em-lang-sep">|</span>
+                    <span class="em-lang-btn" id="em-lang-en" onclick="window.emI18n && window.emI18n.setLang('en')">EN</span>
+                </span>
+                <div class="user-menu-wrap" id="userMenuWrap">
+                    <button class="user-menu-btn" onclick="toggleUserMenu()">
+                        👤 {{ current_user }}<span class="arrow">▼</span>
+                    </button>
+                    <div class="user-menu-dropdown">
+                        <div class="user-menu-header">
+                            <strong>{{ current_user }}</strong>
+                            {{ '🔑 Admin' if is_admin else '👤 Operátor' }}
+                        </div>
+                        <a href="/profile" class="user-menu-item" data-i18n="usermenu.edit_profile">✏️ Upravit profil</a>
+                        {% if is_admin %}
+                        <a href="/admin/users" class="user-menu-item" data-i18n="usermenu.manage_users">👥 Správa uživatelů</a>
+                        {% endif %}
+                        <div class="user-menu-divider"></div>
+                        <a href="/logout" class="user-menu-item danger" data-i18n="usermenu.logout">🚪 Odhlásit se</a>
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="two-columns">
+            <!-- Levý sloupec - Přidat -->
+            <div class="section">
+                <h2 data-i18n="devedit.add_section">Přidat nové zařízení</h2>
+                {% if is_admin %}
+                <div class="section-content">
+                    <div id="addAlert"></div>
+                    <form id="addForm">
+                        <div class="form-group">
+                            <label for="deviceName" data-i18n="devedit.label_name">Název zařízení *</label>
+                            <input type="text" id="deviceName" required data-i18n-placeholder="devedit.placeholder_name" placeholder="např. SW-1-CORE">
+                        </div>
+                        <div class="form-group">
+                            <label for="deviceIp" data-i18n="devedit.label_ip">IP adresa *</label>
+                            <input type="text" id="deviceIp" required data-i18n-placeholder="devedit.placeholder_ip" placeholder="např. 10.18.1.100">
+                        </div>
+                        <div class="form-group">
+                            <label for="deviceCommunity" data-i18n="devedit.label_community">SNMP Community (volitelné)</label>
+                            <input type="text" id="deviceCommunity" data-i18n-placeholder="devedit.placeholder_community" placeholder="pokud není zadáno, použije se výchozí">
+                        </div>
+                        <div class="form-group" style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:14px 16px;">
+                            <label style="font-weight:700;color:#92400e;margin-bottom:8px;display:block;" data-i18n="devedit.label_switch_type">&#9201; Typ switche</label>
+                            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;color:#374151;">
+                                <input type="checkbox" id="deviceSlow" style="width:18px;height:18px;cursor:pointer;">
+                                <span data-i18n-html="devedit.slow_switch_full">Switch je <strong>starší než rok 2015</strong> (Cisco 2960S, 3524, 2950&hellip;) &mdash; pomalejší SNMP</span>
+                            </label>
+                            <div style="margin-top:8px;font-size:12px;color:#92400e;">
+                                <span data-i18n-html="devedit.slow_switch_note">⚠️ Zaškrtni pokud je switch výrobcem označen jako WS-C2960S, WS-C3524, WS-C2950 nebo podobný starší model. Skenování MAC adres bude šetrnější k CPU switche.</span>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="btn-container">
+                    <button type="submit" form="addForm" class="btn btn-primary" data-i18n="devedit.add_btn">➕ Přidat zařízení</button>
+                </div>
+                {% else %}
+                <div class="section-content">
+                    <div style="display:flex;align-items:center;justify-content:center;height:200px;">
+                        <div style="text-align:center;">
+                            <div style="font-size:40px;margin-bottom:12px;">🔒</div>
+                            <div style="font-size:15px;font-weight:700;color:#6b7280;letter-spacing:0.3px;" data-i18n="devedit.operator_no_add">ROLE OPERÁTORA NEMŮŽE PŘIDAT ZAŘÍZENÍ</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Pravý sloupec - Odebrat -->
+            <div class="section">
+                <h2 data-i18n="devedit.remove_section">Odebrat zařízení</h2>
+                {% if is_admin %}
+                <div class="section-content">
+                    <div id="removeAlert"></div>
+                    <div class="search-box">
+                        <input type="text" id="searchInput" data-i18n-placeholder="devedit.search_placeholder" placeholder="🔍 Hledat podle IP adresy..." onkeyup="filterDevices()">
+                    </div>
+                    <div class="devices-list" id="devicesList">
+                        <p style="color:#6b7280;text-align:center;padding:20px;">Načítání...</p>
+                    </div>
+                </div>
+                <div class="btn-container">
+                    <button type="button" class="btn btn-danger" id="removeBtn" style="display:none;" data-i18n="devedit.remove_btn">🗑️ Odebrat vybraná zařízení</button>
+                </div>
+                {% else %}
+                <div class="section-content">
+                    <div style="display:flex;align-items:center;justify-content:center;height:200px;">
+                        <div style="text-align:center;">
+                            <div style="font-size:40px;margin-bottom:12px;">🔒</div>
+                            <div style="font-size:15px;font-weight:700;color:#6b7280;letter-spacing:0.3px;" data-i18n="devedit.operator_no_remove">ROLE OPERÁTORA NEMŮŽE ODEBRAT ZAŘÍZENÍ</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var allDevices = [];
+
+        // Helper function to parse IP address for numerical sorting
+        function ipToNumber(ip) {
+            var parts = ip.split('.');
+            if (parts.length !== 4) return 0;
+            return parts.reduce(function(acc, part, i) {
+                return acc + (parseInt(part) || 0) * Math.pow(256, 3 - i);
+            }, 0);
+        }
+
+        function showAlert(containerId, message, type) {
+            var container = document.getElementById(containerId);
+            container.innerHTML = '<div class="alert alert-' + type + '">' + message + '</div>';
+            setTimeout(function() { container.innerHTML = ''; }, 5000);
+        }
+
+        document.getElementById('addForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var name = document.getElementById('deviceName').value;
+            var ip = document.getElementById('deviceIp').value;
+            var community = document.getElementById('deviceCommunity').value;
+
+            var slow = document.getElementById('deviceSlow').checked;
+            fetch('/api/devices/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, ip: ip, community: community, slow_switch: slow })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    showAlert('addAlert', data.message || 'Zařízení úspěšně přidáno', 'success');
+                    document.getElementById('addForm').reset();
+                    loadDevices();
+                } else {
+                    showAlert('addAlert', data.error || 'Chyba při přidávání', 'error');
+                }
+            })
+            .catch(function(e) {
+                showAlert('addAlert', 'Chyba: ' + e.message, 'error');
+            });
+        });
+
+        function loadDevices() {
+            fetch('/api/devices/list')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    allDevices = data.devices || [];
+                    // Sort by IP numerically (not alphabetically)
+                    allDevices.sort(function(a, b) {
+                        return ipToNumber(a.ip) - ipToNumber(b.ip);
+                    });
+                    renderDevices(allDevices);
+                    document.getElementById('removeBtn').style.display = allDevices.length > 0 ? 'block' : 'none';
+                })
+                .catch(function(e) {
+                    console.error('Load error:', e);
+                });
+        }
+
+        function filterDevices() {
+            var search = document.getElementById('searchInput').value.toLowerCase();
+            var filtered = allDevices.filter(function(d) {
+                return d.ip.toLowerCase().includes(search);
+            });
+            renderDevices(filtered);
+        }
+
+        function renderDevices(devices) {
+            var container = document.getElementById('devicesList');
+            
+            if (devices.length === 0) {
+                container.innerHTML = '<p style="color:#6b7280;text-align:center;padding:20px;">Žádná zařízení</p>';
+                return;
+            }
+
+            container.innerHTML = devices.map(function(d) {
+                return '<div class="device-item">' +
+                    '<input type="checkbox" class="device-checkbox" value="' + d.ip + '">' +
+                    '<div class="device-label">' +
+                        '<strong>' + d.name + '</strong> <span class="ip">(' + d.ip + ')</span>' +
+                    '</div>' +
+                    '</div>';
+            }).join('');
+        }
+
+        document.getElementById('removeBtn').addEventListener('click', function() {
+            var checkboxes = document.querySelectorAll('.device-checkbox:checked');
+            if (checkboxes.length === 0) {
+                showAlert('removeAlert', 'Nejsou vybrána žádná zařízení', 'error');
+                return;
+            }
+
+            if (!confirm('Opravdu chcete odebrat ' + checkboxes.length + ' zařízení?')) {
+                return;
+            }
+
+            var ips = Array.from(checkboxes).map(function(cb) { return cb.value; });
+
+            fetch('/api/devices/remove', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ips: ips })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    showAlert('removeAlert', data.message || 'Zařízení úspěšně odebrána', 'success');
+                    loadDevices();
+                } else {
+                    showAlert('removeAlert', data.error || 'Chyba při odebírání', 'error');
+                }
+            })
+            .catch(function(e) {
+                showAlert('removeAlert', 'Chyba: ' + e.message, 'error');
+            });
+        });
+
+        loadDevices();
+        function toggleUserMenu() {
+            document.getElementById("userMenuWrap").classList.toggle("open");
+        }
+        document.addEventListener("click", function(e) {
+            var wrap = document.getElementById("userMenuWrap");
+            if (wrap && !wrap.contains(e.target)) wrap.classList.remove("open");
+        });
+    </script>
+</body>
+</html>

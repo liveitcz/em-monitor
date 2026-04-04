@@ -1,0 +1,37 @@
+# =============================================================
+#  Energy Monitor — Docker Compose (Debian / Ubuntu)
+#  For Synology NAS use: compose.synology.yaml
+#
+#  Prerequisites:
+#    1. Set EM_ROOT in .env or export EM_ROOT=/your/path
+#    2. Run: bash setup.sh
+#    3. Run: docker compose up -d
+# =============================================================
+
+services:
+  em:
+    build:
+      context: .
+      network: host
+    image: em-local:latest
+    container_name: em-monitor
+    network_mode: host
+    volumes:
+      - ${EM_ROOT}/data:/app/data
+      - ${EM_ROOT}/config:/app/config
+      - ${EM_ROOT}/templates:/app/templates
+      - ${EM_ROOT}/static:/app/static
+      - ${EM_ROOT}/languages:/app/languages
+      - ${EM_ROOT}/logs:/app/logs
+      - ${EM_ROOT}/mibs:/opt/mibs:ro
+      - ${EM_ROOT}/snmp_helper.py:/app/snmp_helper.py
+      - ${EM_ROOT}/detail_ports.py:/app/detail_ports.py
+      - ${EM_ROOT}/arp.py:/app/arp.py
+      - ${EM_ROOT}/init_db.py:/app/init_db.py
+      - ${EM_ROOT}/snmp_detail.py:/app/snmp_detail.py
+    environment:
+      - TZ=Europe/Prague
+      - MIBDIRS=/opt/mibs/cisco:/opt/mibs/standard:/usr/share/snmp/mibs
+      - MIBS=+ALL
+      - EM_PORT=4999
+    restart: on-failure:5

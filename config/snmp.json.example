@@ -1,0 +1,7 @@
+{
+  "community": "public",
+  "version": "2c",
+  "timeout": 5,
+  "retries": 1,
+  "per_device": {}
+}

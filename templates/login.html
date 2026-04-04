@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Monitoring PoE</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .login-header {
+            padding: 20px 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .login-wrapper {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 5vh;
+        }
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 420px;
+        }
+        .login-container h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #eee;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 10px rgba(102,126,234,0.2);
+        }
+        /* Lang switcher */
+        .lang-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            margin: 10px 0 20px;
+        }
+        .em-lang-btn {
+            cursor: pointer;
+            padding: 3px 10px;
+            border-radius: 5px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #667eea;
+            transition: all 0.15s;
+            user-select: none;
+        }
+        .em-lang-btn:hover { background: #f0f0ff; }
+        .em-lang-sep { color: #ccc; padding: 0 2px; }
+        /* Submit */
+        .submit-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102,126,234,0.4);
+        }
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-header">
+        <div class="header-title">
+            <span>⚡</span>
+            <span data-i18n="login.app_title">Mapování MAC, VLAN a PoE zařízení</span>
+            <span>⚡</span>
+        </div>
+    </div>
+
+    <div class="login-wrapper">
+        <div class="login-container">
+            <h1 data-i18n="login.title">Přihlášení</h1>
+
+            {% if error %}
+                <div class="error">{{ error }}</div>
+            {% endif %}
+
+            <form method="post">
+                <div class="form-group">
+                    <label for="username" data-i18n="login.label_username">Uživatelské jméno</label>
+                    <input type="text" id="username" name="username" required autofocus>
+                </div>
+                <div class="form-group">
+                    <label for="password" data-i18n="login.label_password">Heslo</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+
+                <div class="lang-row">
+                    <span class="em-lang-btn" id="em-lang-cs" onclick="window.emI18n && window.emI18n.setLang('cs')">CZ</span>
+                    <span class="em-lang-sep">|</span>
+                    <span class="em-lang-btn" id="em-lang-en" onclick="window.emI18n && window.emI18n.setLang('en')">EN</span>
+                </div>
+
+                <button type="submit" class="submit-btn" data-i18n="login.submit">Přihlásit se</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    window.emI18n = (function() {
+        var _lang = localStorage.getItem('em-lang') || 'cs';
+        var _t = {};
+        function setLang(lang) {
+            _lang = lang; localStorage.setItem('em-lang', lang);
+            if (lang === 'cs') { location.reload(); return; }
+            _load();
+        }
+        function _load() {
+            if (_lang === 'cs') { _updateSwitcher(); return; }
+            fetch('/static/lang/' + _lang + '.json?v=2')
+                .then(function(r){ return r.json(); })
+                .then(function(d){ _t=d; _apply(); _updateSwitcher(); })
+                .catch(function(e){ console.warn('[emI18n]',e.message); _updateSwitcher(); });
+        }
+        function t(key) {
+            if (_lang === 'cs') return null;
+            var val = key.split('.').reduce(function(o,k){ return o&&o[k]!==undefined?o[k]:null; }, _t);
+            return val !== null ? String(val) : null;
+        }
+        function _apply() {
+            document.querySelectorAll('[data-i18n]').forEach(function(el){
+                var v = t(el.getAttribute('data-i18n')); if (v !== null) el.textContent = v;
+            });
+            document.documentElement.lang = (_lang==='en')?'en':'cs';
+        }
+        function _updateSwitcher() {
+            ['cs','en'].forEach(function(l){
+                var el = document.getElementById('em-lang-'+l); if (!el) return;
+                el.style.fontWeight     = (l===_lang)?'700':'400';
+                el.style.opacity        = (l===_lang)?'1':'0.5';
+                el.style.textDecoration = (l===_lang)?'underline':'none';
+            });
+        }
+        if (document.readyState==='loading'){ document.addEventListener('DOMContentLoaded',_load); } else { _load(); }
+        return { setLang: setLang, getLang: function(){ return _lang; } };
+    })();
+    </script>
+</body>
+</html>

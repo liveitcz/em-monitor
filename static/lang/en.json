@@ -1,0 +1,191 @@
+{
+  "page": {
+    "title": {
+      "index": "MAC, VLAN and PoE device mapping",
+      "detail": "PoE Monitor - Device detail"
+    }
+  },
+  "role": {
+    "admin": "🔑 Admin",
+    "operator": "👤 Operator"
+  },
+  "nav": {
+    "back": "← Back to overview",
+    "profile": "Edit profile",
+    "users": "Manage users",
+    "logout": "Log out",
+    "global_mac": "Global MAC & VLAN"
+  },
+  "search": {
+    "label": "Search MAC address:",
+    "placeholder": "Enter H.H.H or xx:xx:xx:xx:xx:xx",
+    "button": "Search",
+    "hint": "Enter a MAC address",
+    "found": "✓ Found:",
+    "notfound": "✗ Not found",
+    "searching": "Searching..."
+  },
+  "poe": {
+    "budget": "PoE Budget",
+    "usage": "Consumption",
+    "remaining": "Remaining",
+    "utilization": "Usage:",
+    "avg_utilization": "Average usage"
+  },
+  "devices": {
+    "active": "Active devices"
+  },
+  "ports": "Ports",
+  "loading": "Loading...",
+  "no_data": "No devices",
+  "filter": {
+    "area": "Area",
+    "rack": "Rack",
+    "type": "Type",
+    "model": "Model",
+    "all": "ALL",
+    "clear": "Clear filters"
+  },
+  "view": {
+    "table": "Table",
+    "tiles": "Tiles"
+  },
+  "btn": {
+    "export": "↓ Export",
+    "add_remove": "Add / Remove",
+    "rescan": "RE-SCAN NOW"
+  },
+  "col": {
+    "ip": "IP address",
+    "device": "Device",
+    "model": "Model",
+    "sn": "SN",
+    "status": "Status",
+    "ports": "Ports",
+    "poe_ports": "PoE ports",
+    "poe_budget": "PoE Budget (W)",
+    "poe_usage": "PoE Consumption (W)",
+    "poe_remaining": "PoE Remaining (W)",
+    "poe_util": "PoE Usage (%)",
+    "port": "Port",
+    "desc": "Description",
+    "mac_device": "Device MAC",
+    "vlan": "VLAN",
+    "power": "Consumption (W)",
+    "link": "UP / DOWN"
+  },
+  "common": {
+    "home": "🏠 HOME",
+    "username": "Username",
+    "role": "Role",
+    "full_name": "Full name",
+    "email": "E-mail",
+    "created_at": "Account created",
+    "last_login": "Last login",
+    "account_status": "Account status",
+    "save_changes": "💾 Save changes"
+  },
+  "usermenu": {
+    "edit_profile": "✏️ Edit profile",
+    "manage_users": "👥 Manage users",
+    "logout": "🚪 Log out"
+  },
+  "mac_vlans": {
+    "title": "🔢 MAC addresses and VLANs on the network",
+    "back_overview": "← Back to overview",
+    "vlans_in_db": "VLANs in database",
+    "vlan_hint": "click a VLAN to display its MAC addresses",
+    "vlans_label": "VLANs",
+    "select_vlan_option": "-- Select VLAN --",
+    "table_title_default": "Select a VLAN",
+    "search_placeholder": "🔍 Search MAC / device / port / description...",
+    "search_btn": "Search",
+    "col_mac": "MAC address",
+    "col_vlan": "VLAN",
+    "click_vlan_hint": "👈 Click a VLAN above to display MAC addresses",
+    "toggle_view": "⇄ Change view",
+    "col_device": "Device",
+    "col_port": "Port",
+    "col_port_desc": "Port description"
+  },
+  "devedit": {
+    "title": "⚡ Device management",
+    "change_log": "📋 Change log",
+    "back_overview": "← Back to overview",
+    "add_section": "Add new device",
+    "remove_section": "Remove device",
+    "label_name": "Device name *",
+    "placeholder_name": "e.g. SW-1-CORE",
+    "label_ip": "IP address *",
+    "placeholder_ip": "e.g. 10.18.1.100",
+    "label_community": "SNMP Community (optional)",
+    "placeholder_community": "if not set, default will be used",
+    "label_switch_type": "⏱ Switch type",
+    "slow_switch_label": "older than year 2015",
+    "add_btn": "➕ Add device",
+    "remove_btn": "🗑️ Remove selected devices",
+    "search_placeholder": "🔍 Search by IP address...",
+    "operator_no_add": "OPERATOR ROLE CANNOT ADD DEVICES",
+    "operator_no_remove": "OPERATOR ROLE CANNOT REMOVE DEVICES",
+    "slow_switch_full": "Switch is <strong>older than year 2015</strong> (Cisco 2960S, 3524, 2950&hellip;) &mdash; slower SNMP",
+    "slow_switch_note": "⚠️ Check this if the switch is marked as WS-C2960S, WS-C3524, WS-C2950 or other older model. MAC address scanning will be gentler on the switch's CPU."
+  },
+  "add_remove": {
+    "title": "📋 Device change log",
+    "back_manage": "← Back to device management",
+    "history_title": "History of added and removed devices",
+    "error_label": "Error:",
+    "col_datetime": "Date and time",
+    "col_ip": "IP address",
+    "col_name": "Device name",
+    "col_action": "Action",
+    "action_added": "➕ ADDED",
+    "action_removed": "🗑️ REMOVED",
+    "no_entries": "📄 No changes have been made yet"
+  },
+  "profile": {
+    "subtitle": "Manage your account",
+    "back_overview": "← Back to overview",
+    "account_info": "ℹ️ Account information",
+    "edit_profile": "✏️ Edit profile",
+    "change_password": "🔒 Change password",
+    "placeholder_fullname": "Your first and last name",
+    "label_current_pwd": "Current password",
+    "placeholder_current_pwd": "Enter current password",
+    "label_new_pwd": "New password",
+    "placeholder_new_pwd": "At least 4 characters",
+    "label_new_pwd2": "Repeat new password",
+    "placeholder_new_pwd2": "Repeat the new password",
+    "change_pwd_btn": "🔒 Change password"
+  },
+  "user_mgmt": {
+    "title": "👥 User management",
+    "back_overview": "← Back to overview",
+    "add_user": "➕ Add user",
+    "users_list": "📋 User list",
+    "label_username": "Username *",
+    "placeholder_username": "e.g. jnovak",
+    "label_password": "Password *",
+    "placeholder_password": "At least 4 characters",
+    "label_role": "Role",
+    "label_fullname": "Full name",
+    "label_email": "E-mail",
+    "add_btn": "➕ Add user",
+    "edit_modal_title": "✏️ Edit user:",
+    "label_new_pwd": "New password",
+    "new_pwd_hint": "(empty = no change)",
+    "placeholder_new_pwd": "Leave empty to keep current",
+    "label_account_status": "Account status",
+    "cancel_btn": "Cancel",
+    "save_btn": "💾 Save"
+  },
+  "login": {
+    "title": "Sign in",
+    "header": "Network PoE Device Monitoring",
+    "label_username": "Username",
+    "label_password": "Password",
+    "submit": "Sign in",
+    "app_subtitle": "Network PoE device monitoring",
+    "app_title": "MAC, VLAN and PoE device mapping"
+  }
+}

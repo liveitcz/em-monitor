@@ -1,0 +1,32 @@
+# =============================================================
+#  Energy Monitor — .gitignore
+# =============================================================
+
+# Environment
+.env
+
+# Database
+data/
+
+# Logs
+logs/
+
+# Config with passwords/IPs — use config.example files
+config/devices.json
+config/snmp.json
+
+# MIBs (large files)
+mibs/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Keep example files in git
+!.env.example
+!config/*.example

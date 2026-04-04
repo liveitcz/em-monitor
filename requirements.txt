@@ -1,0 +1,20 @@
+# requirements.txt - STABLE VERZE
+# Podle výstupu test-versions.sh (Debian 12, Python 3.11.8)
+
+APScheduler==3.10.4
+blinker==1.9.0
+bcrypt==4.2.1
+click==8.1.3
+Flask==3.0.0
+itsdangerous==2.1.2
+Jinja2==3.1.2
+MarkupSafe==3.0.3
+pytz==2025.2
+six==1.17.0
+tzlocal==5.3.1
+Werkzeug==3.0.0
+
+# Pinnuté verze z pip list
+# pip==26.0.1 (systémový, neinstalovat přes requirements)
+# setuptools==65.5.1 (systémový)
+# wheel==0.43.0 (systémový)

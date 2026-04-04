@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOG změn - PoE Monitor</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1800px; margin: 0 auto; }
+        
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            font-weight: bold;
+            margin: 0;
+        }
+        .back-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        .back-link:hover { text-decoration: underline; }
+        
+        .log-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .log-container h2 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        .log-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .log-table th {
+            background: #f3f4f6;
+            color: #374151;
+            font-weight: 600;
+            padding: 12px;
+            text-align: left;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .log-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+            color: #1f2937;
+        }
+        .log-table tr:hover {
+            background: #f9fafb;
+        }
+        
+        .action-added {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .action-removed {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        
+        .no-entries {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+            font-size: 16px;
+        }
+        
+        .error-message {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border: 1px solid #ef4444;
+        }
+    
+        /* Lang switcher */
+        .em-lang-switch { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: #6b7280; user-select: none; }
+        .em-lang-btn { cursor: pointer; padding: 2px 8px; border-radius: 4px; transition: all 0.15s; font-weight: 600; }
+        .em-lang-btn:hover { background: #f3f4f6; color: #4f46e5; }
+        .em-lang-sep { opacity: 0.35; margin: 0 1px; }
+</style>
+    <script src="{{ url_for('static', filename='js/i18n.js') }}" defer></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-top">
+                <h1 data-i18n="add_remove.title">📋 LOG změn zařízení</h1>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <a href="/devedit" class="back-link" data-i18n="add_remove.back_manage">← Zpět na správu zařízení</a>
+                    <span class="em-lang-switch">
+                        <span class="em-lang-btn" id="em-lang-cs" onclick="window.emI18n && window.emI18n.setLang('cs')">CZ</span>
+                        <span class="em-lang-sep">|</span>
+                        <span class="em-lang-btn" id="em-lang-en" onclick="window.emI18n && window.emI18n.setLang('en')">EN</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="log-container">
+            <h2>
+                <span data-i18n="add_remove.history_title">Historie přidání a odebrání zařízení</span>
+                {% if last_change %}
+                    {% if request.cookies.get("em-lang") == "en" %}(last change {{ last_change | format_date_cz }}){% else %}(poslední změna provedena v {{ last_change | format_date_cz }}){% endif %}
+                {% endif %}
+            </h2>
+            
+            {% if error %}
+            <div class="error-message">
+                <strong data-i18n="add_remove.error_label">Chyba:</strong> {{ error }}
+            </div>
+            {% endif %}
+            
+            {% if entries %}
+            <table class="log-table">
+                <thead>
+                    <tr>
+                        <th data-i18n="add_remove.col_datetime">Datum a čas</th>
+                        <th data-i18n="add_remove.col_ip">IP adresa</th>
+                        <th data-i18n="add_remove.col_name">Název zařízení</th>
+                        <th data-i18n="add_remove.col_action">Akce</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in entries %}
+                    <tr>
+                        <td>{{ entry.timestamp | format_date_cz }}</td>
+                        <td>{{ entry.ip }}</td>
+                        <td>{{ entry.name }}</td>
+                        <td>
+                            {% if entry.action == 'PŘIDÁNO' %}
+                                <span class="action-added" data-i18n="add_remove.action_added">➕ PŘIDÁNO</span>
+                            {% elif entry.action == 'ODEBRÁNO' %}
+                                <span class="action-removed" data-i18n="add_remove.action_removed">🗑️ ODEBRÁNO</span>
+                            {% else %}
+                                <span>{{ entry.action }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="no-entries">
+                <span data-i18n="add_remove.no_entries">📄 Zatím nebyly provedeny žádné změny</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

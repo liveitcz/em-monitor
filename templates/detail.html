@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n-title="page.title.detail">PoE Monitor - Detail zařízení</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1800px; margin: 0 auto; }
+        .header { background: white; padding: 15px 30px; border-radius: 10px; margin-bottom: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .header h1 { color: black; font-size: 24px; margin: 0; }
+        .device-info { color: #999; font-size: 19px; margin-top: 5px; }
+        .header-right { display: flex; align-items: center; gap: 15px; }
+        .back-link { color: #667eea; text-decoration: none; font-weight: 600; white-space: nowrap; }
+        .back-link:hover { text-decoration: underline; }
+
+        /* Lang switcher */
+        .em-lang-switch { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; color: #6b7280; user-select: none; }
+        .em-lang-btn { cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: all 0.15s; }
+        .em-lang-btn:hover { background: #f3f4f6; }
+        .em-lang-sep { opacity: 0.35; font-weight: 400; margin: 0 1px; }
+
+        /* User menu */
+        .user-menu-wrap { position: relative; display: inline-block; }
+        .user-menu-btn { background: rgba(102,126,234,0.1); border: 1.5px solid rgba(102,126,234,0.35); color: #4f46e5; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: background 0.2s; white-space: nowrap; }
+        .user-menu-btn:hover { background: rgba(102,126,234,0.18); }
+        .user-menu-btn .arrow { font-size: 10px; opacity: 0.7; }
+        .user-menu-dropdown { display: none; position: absolute; right: 0; top: calc(100% + 6px); background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); min-width: 180px; z-index: 1000; overflow: hidden; }
+        .user-menu-wrap:hover .user-menu-dropdown, .user-menu-wrap.open .user-menu-dropdown { display: block; }
+        .user-menu-header { padding: 12px 16px; background: #f3f4f6; border-bottom: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }
+        .user-menu-header strong { display: block; color: #111827; font-size: 14px; }
+        .user-menu-item { display: block; padding: 10px 16px; color: #374151; text-decoration: none; font-size: 14px; transition: background 0.15s; }
+        .user-menu-item:hover { background: #f9fafb; color: #111827; }
+        .user-menu-item.danger { color: #dc2626; }
+        .user-menu-item.danger:hover { background: #fef2f2; }
+        .user-menu-divider { height: 1px; background: #e5e7eb; margin: 4px 0; }
+
+        /* Compact row */
+        .summary-compact-row { display: none; align-items: center; justify-content: flex-end; gap: 15px; padding: 12px 0; }
+        .summary-compact-row.show { display: flex; }
+        .summary-compact-content { font-size: 22px; color: #555; }
+        .summary-compact-item { display: inline; margin-right: 20px; }
+        .summary-compact-label { font-weight: 600; color: #333; }
+        .summary-compact-value-black { font-weight: bold; color: black; }
+        .summary-compact-value-red { font-weight: bold; color: #ef4444; }
+        .summary-compact-value-green { font-weight: bold; color: #10b981; }
+        .summary-compact-value-normal { font-weight: bold; }
+
+        /* Collapse */
+        .collapse-toggle { background: #667eea; color: white; border: none; width: 36px; height: 36px; border-radius: 6px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; transition: all 0.3s; box-shadow: 0 2px 6px rgba(0,0,0,0.15); flex-shrink: 0; }
+        .collapse-toggle:hover { background: #5a67d8; transform: translateY(-2px); }
+        .collapsible-content { max-height: 500px; overflow: hidden; transition: max-height 0.3s ease-out; }
+        .collapsible-content.collapsed { max-height: 0; }
+        .stats-with-arrow { display: grid; grid-template-columns: repeat(4, 1fr) auto; gap: 15px; align-items: center; }
+        .stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; text-align: center; }
+        .stat-label { font-size: 17px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9; margin-bottom: 5px; }
+        .stat-value { font-size: 30px; font-weight: bold; }
+
+        /* Ports table */
+        .ports-table { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .ports-table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .ports-table h2 { color: black; font-size: 18px; margin: 0; }
+        .refresh-hint { color: #999; font-size: 12px; margin-left: 10px; }
+        .rescan-btn { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.2s; }
+        .rescan-btn:hover:not(:disabled) { background: linear-gradient(135deg, #059669 0%, #047857 100%); transform: translateY(-2px); }
+        .rescan-btn:disabled { background: #d1d5db; cursor: not-allowed; color: #6b7280; }
+
+        table { width: 100%; border-collapse: collapse; }
+        thead { position: sticky; top: 0; z-index: 10; }
+        th { background: #667eea; color: white; padding: 12px; text-align: left; font-weight: 600; font-size: 14px; }
+        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
+        tr:hover { background: #f5f5f5; }
+        .pw-zero  { color: #999; }
+        .pw-green { background: #d1fae5; color: black; font-weight: 600; }
+        .pw-blue  { background: #dbeafe; color: black; font-weight: 600; }
+        .pw-red   { background: #fee2e2; color: black; font-weight: 600; }
+        .loading-row td { text-align: center; padding: 40px; color: #999; }
+        .error-row td { text-align: center; padding: 40px; color: #ef4444; }
+        .mac-cell { font-family: monospace; font-size: 14px; }
+        .vlan-cell { font-family: monospace; font-size: 14px; color: #555; }
+        .status-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; }
+        .status-up   { background: #10b981; box-shadow: 0 0 8px rgba(16,185,129,0.6); }
+        .status-down { background: #ef4444; box-shadow: 0 0 8px rgba(239,68,68,0.6); }
+        .status-center { text-align: center; vertical-align: middle; }
+        .trunk-text { color: #0066cc; font-weight: bold; font-size: 13px; }
+        .spinner { display: inline-block; width: 18px; height: 18px; border: 3px solid #ddd; border-top-color: #667eea; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 8px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-top">
+                <div>
+                    <h1 id="deviceName">⚡ Načítání...</h1>
+                    <div class="device-info" id="deviceInfo"></div>
+                </div>
+                <div class="header-right">
+                    <a href="/" class="back-link" data-i18n="nav.back">← Zpět na přehled</a>
+                    <!-- Lang switcher -->
+                    <span class="em-lang-switch">
+                        <span class="em-lang-btn" id="em-lang-cs" onclick="emI18n.setLang('cs')">CZ</span>
+                        <span class="em-lang-sep">|</span>
+                        <span class="em-lang-btn" id="em-lang-en" onclick="emI18n.setLang('en')">EN</span>
+                    </span>
+                    <!-- User menu -->
+                    <div class="user-menu-wrap" id="userMenuWrap">
+                        <button class="user-menu-btn" onclick="toggleUserMenu()">
+                            👤 {{ current_user }}<span class="arrow">▼</span>
+                        </button>
+                        <div class="user-menu-dropdown">
+                            <div class="user-menu-header">
+                                <strong>{{ current_user }}</strong>
+                                <span data-i18n="{{ 'role.admin' if is_admin else 'role.operator' }}">{{ '🔑 Admin' if is_admin else '👤 Operátor' }}</span>
+                            </div>
+                            <a href="/profile" class="user-menu-item">✏️ <span data-i18n="nav.profile">Upravit profil</span></a>
+                            {% if is_admin %}
+                            <a href="/admin/users" class="user-menu-item">👥 <span data-i18n="nav.users">Správa uživatelů</span></a>
+                            {% endif %}
+                            <div class="user-menu-divider"></div>
+                            <a href="/logout" class="user-menu-item danger">🚪 <span data-i18n="nav.logout">Odhlásit se</span></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compact summary -->
+            <div id="summaryCompactRow" class="summary-compact-row">
+                <div class="summary-compact-content">
+                    <span class="summary-compact-item"><span class="summary-compact-label" data-i18n="poe.budget">PoE Budget:</span> <span class="summary-compact-value-black" id="compactBudget">-</span></span>
+                    <span style="color:#ccc">|</span>
+                    <span class="summary-compact-item"><span class="summary-compact-label" data-i18n="poe.usage">Spotřeba:</span> <span class="summary-compact-value-red" id="compactUsed">-</span></span>
+                    <span style="color:#ccc">|</span>
+                    <span class="summary-compact-item"><span class="summary-compact-label" data-i18n="poe.remaining">Zbývá:</span> <span class="summary-compact-value-green" id="compactRemaining">-</span></span>
+                    <span style="color:#ccc">|</span>
+                    <span class="summary-compact-item"><span class="summary-compact-label" data-i18n="poe.utilization">Využití:</span> <span class="summary-compact-value-normal" id="compactPercentage">-</span></span>
+                </div>
+                <button class="collapse-toggle" onclick="toggleCollapse()" id="collapseBtnInline" title="Rozbalit">▼</button>
+            </div>
+
+            <!-- Collapsible stats -->
+            <div id="collapsibleContent" class="collapsible-content">
+                <div class="stats-with-arrow">
+                    <div class="stat-card"><div class="stat-label" data-i18n="poe.budget">PoE Budget</div><div class="stat-value" id="poeBudget">-</div></div>
+                    <div class="stat-card"><div class="stat-label" data-i18n="poe.usage">PoE Spotřeba</div><div class="stat-value" id="poeUsed">-</div></div>
+                    <div class="stat-card"><div class="stat-label" data-i18n="poe.remaining">Zbývá</div><div class="stat-value" id="poeRemaining">-</div></div>
+                    <div class="stat-card"><div class="stat-label" data-i18n="poe.utilization">Využití</div><div class="stat-value" id="poePercentage">-</div></div>
+                    <button class="collapse-toggle" onclick="toggleCollapse()" id="collapseBtnInGrid" title="Sbalit">▲</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="ports-table">
+            <div class="ports-table-header">
+                <h2 id="portsTitle"><span class="spinner" id="spinner"></span>Načítání dat...<span class="refresh-hint" id="refreshHint"></span></h2>
+                <button class="rescan-btn" id="rescanBtn" onclick="rescanDevice()" data-i18n="btn.rescan">RE-SCAN NOW</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th data-i18n="col.port">Port</th>
+                        <th data-i18n="col.desc">Popis</th>
+                        <th data-i18n="col.mac_device">MAC zařízení</th>
+                        <th data-i18n="col.vlan">VLAN</th>
+                        <th data-i18n="col.power">Spotřeba (W)</th>
+                        <th data-i18n="col.link">UP / DOWN</th>
+                    </tr>
+                </thead>
+                <tbody id="portsBody">
+                    <tr class="loading-row"><td colspan="6" data-i18n="loading">Načítání...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ═══════════════ emI18n module ═══════════════ -->
+    <script>
+    window.emI18n = (function() {
+        var _lang = localStorage.getItem('em-lang') || 'cs';
+        var _t = {};
+
+        function setLang(lang) {
+            _lang = lang;
+            localStorage.setItem('em-lang', lang);
+            if (lang === 'cs') { location.reload(); return; }
+            _load();
+        }
+
+        function _load() {
+            if (_lang === 'cs') { _updateSwitcher(); return; }
+            fetch('/static/lang/' + _lang + '.json?v=2')
+                .then(function(r) { return r.json(); })
+                .then(function(d) { _t = d; _apply(); _updateSwitcher(); })
+                .catch(function(e) { console.warn('[emI18n]', e.message); _updateSwitcher(); });
+        }
+
+        function t(key) {
+            if (_lang === 'cs') return null;
+            var val = key.split('.').reduce(function(o, k) { return o && o[k] !== undefined ? o[k] : null; }, _t);
+            return val !== null ? String(val) : null;
+        }
+
+        function _apply() {
+            document.querySelectorAll('[data-i18n]').forEach(function(el) {
+                var v = t(el.getAttribute('data-i18n'));
+                if (v !== null) el.textContent = v;
+            });
+            document.querySelectorAll('[data-i18n-ph]').forEach(function(el) {
+                var v = t(el.getAttribute('data-i18n-ph'));
+                if (v !== null) el.placeholder = v;
+            });
+            var titleEl = document.querySelector('[data-i18n-title]');
+            if (titleEl) { var tv = t(titleEl.getAttribute('data-i18n-title')); if (tv !== null) document.title = tv; }
+            document.documentElement.lang = (_lang === 'en') ? 'en' : 'cs';
+        }
+
+        function _updateSwitcher() {
+            ['cs','en'].forEach(function(l) {
+                var el = document.getElementById('em-lang-' + l);
+                if (!el) return;
+                el.style.fontWeight     = (l === _lang) ? '700' : '400';
+                el.style.opacity        = (l === _lang) ? '1'   : '0.5';
+                el.style.textDecoration = (l === _lang) ? 'underline' : 'none';
+                el.style.color          = (l === _lang) ? '#4f46e5' : '#6b7280';
+            });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', _load);
+        } else {
+            _load();
+        }
+
+        return { setLang: setLang, getLang: function() { return _lang; }, t: t };
+    })();
+    </script>
+
+    <script>
+        const deviceIp = window.location.pathname.split('/').pop();
+
+        function toggleCollapse() {
+            const content = document.getElementById('collapsibleContent');
+            const btnInline = document.getElementById('collapseBtnInline');
+            const btnInGrid = document.getElementById('collapseBtnInGrid');
+            const compactRow = document.getElementById('summaryCompactRow');
+            if (content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                compactRow.classList.remove('show');
+                if (btnInGrid) btnInGrid.textContent = '▲';
+                if (btnInline) btnInline.textContent = '▼';
+            } else {
+                content.classList.add('collapsed');
+                compactRow.classList.add('show');
+                if (btnInGrid) btnInGrid.textContent = '▼';
+                if (btnInline) btnInline.textContent = '▲';
+            }
+        }
+
+        function formatPowerWithUnit(watts) {
+            if (!watts) return '0 <small style="font-size:0.6em;opacity:0.9;">W</small>';
+            if (watts >= 1000) return (watts/1000).toFixed(2) + ' <small style="font-size:0.6em;opacity:0.9;">kW</small>';
+            return watts.toFixed(1) + ' <small style="font-size:0.6em;opacity:0.9;">W</small>';
+        }
+        function formatPercentage(pct) {
+            if (pct === null || pct === undefined) return '-';
+            return pct.toFixed(2) + ' <small style="font-size:0.6em;opacity:0.9;">%</small>';
+        }
+
+        function loadDevice() {
+            Promise.all([
+                fetch(`/api/device/${deviceIp}`).then(r => r.json()),
+                fetch(`/api/device_detail/${deviceIp}`).then(r => r.json())
+            ]).then(([deviceData, portsData]) => {
+                const device = deviceData.current || deviceData;
+                document.getElementById('deviceName').textContent = `⚡ ${device.device_name}`;
+                document.getElementById('deviceInfo').textContent = `(${device.device_model} | ${device.device_ip} | SN: ${device.device_serial})`;
+                document.getElementById('poeBudget').innerHTML   = formatPowerWithUnit(device.poe_available);
+                document.getElementById('poeUsed').innerHTML     = formatPowerWithUnit(device.poe_used);
+                document.getElementById('poeRemaining').innerHTML = formatPowerWithUnit(device.poe_remaining);
+                document.getElementById('poePercentage').innerHTML = formatPercentage(device.poe_percentage);
+                document.getElementById('compactBudget').innerHTML    = formatPowerWithUnit(device.poe_available);
+                document.getElementById('compactUsed').innerHTML      = formatPowerWithUnit(device.poe_used);
+                document.getElementById('compactRemaining').innerHTML = formatPowerWithUnit(device.poe_remaining);
+                document.getElementById('compactPercentage').innerHTML = formatPercentage(device.poe_percentage);
+                renderPorts(portsData.ports || []);
+                document.getElementById('spinner').style.display = 'none';
+                const loadTime = portsData.load_time || 0;
+                document.getElementById('portsTitle').innerHTML = `Detailní výpis PoE portů (${portsData.ports.length} portů) načteno za ${loadTime.toFixed(1)}s`;
+            }).catch(err => {
+                document.getElementById('portsBody').innerHTML =
+                    `<tr class="error-row"><td colspan="6">Chyba: ${err.message}</td></tr>`;
+            });
+        }
+
+        function renderPorts(ports) {
+            const tbody = document.getElementById('portsBody');
+            if (ports.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#999;">⚠ Žádné PoE porty nebo zařízení nemá PoE</td></tr>';
+                return;
+            }
+            tbody.innerHTML = ports.map(p => {
+                let statusDot = '-';
+                if (p.port_status === 1) statusDot = '<div class="status-dot status-up"></div>';
+                else if (p.port_status === 2) statusDot = '<div class="status-dot status-down"></div>';
+                let powerClass = 'pw-zero';
+                const pw = p.power_watts || 0;
+                if (pw > 0 && pw <= 15.4) powerClass = 'pw-green';
+                else if (pw > 15.4 && pw <= 30) powerClass = 'pw-blue';
+                else if (pw > 30) powerClass = 'pw-red';
+                let macVlanHtml = '';
+                if (p.is_trunk && (!p.mac_vlan || p.mac_vlan.length === 0)) {
+                    macVlanHtml = `<td class="trunk-text">ALL MACs</td><td class="trunk-text">ALL VLANs</td>`;
+                } else if (p.mac_vlan && p.mac_vlan.length > 0) {
+                    const macs  = p.mac_vlan.map(m => `<div class="mac-cell">${m.mac}</div>`).join('');
+                    const vlans = p.mac_vlan.map(m => { let vt = m.vlan_id||'-'; if(m.vlan_name) vt+=` (${m.vlan_name})`; return `<div class="vlan-cell">${vt}</div>`; }).join('');
+                    macVlanHtml = `<td>${macs}</td><td>${vlans}</td>`;
+                } else if (p.port_vlan) {
+                    macVlanHtml = `<td>-</td><td class="vlan-cell">${p.port_vlan}</td>`;
+                } else {
+                    macVlanHtml = '<td>-</td><td>-</td>';
+                }
+                return `<tr>
+                    <td><strong>${p.port_name}</strong></td>
+                    <td>${p.port_description || '-'}</td>
+                    ${macVlanHtml}
+                    <td class="${powerClass}">${pw.toFixed(3)}</td>
+                    <td class="status-center">${statusDot}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function rescanDevice() {
+            const btn = document.getElementById('rescanBtn');
+            const title = document.getElementById('portsTitle');
+            btn.disabled = true;
+            btn.textContent = 'Scanning...';
+            title.innerHTML = 'Priority scan started. Refreshing in <span id="countdown">12</span>s...';
+            fetch(`/api/rescan/${deviceIp}`, { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        let seconds = 12;
+                        const interval = setInterval(() => {
+                            seconds--;
+                            const el = document.getElementById('countdown');
+                            if (el) el.textContent = seconds;
+                            if (seconds <= 0) { clearInterval(interval); location.reload(); }
+                        }, 1000);
+                    } else {
+                        alert(`Chyba: ${data.error || 'Unknown error'}`);
+                        btn.disabled = false;
+                        btn.textContent = emI18n.t('btn.rescan');
+                        title.innerHTML = 'Detailní výpis PoE portů';
+                    }
+                })
+                .catch(err => {
+                    alert(`Chyba: ${err.message}`);
+                    btn.disabled = false;
+                    btn.textContent = emI18n.t('btn.rescan');
+                    title.innerHTML = 'Detailní výpis PoE portů';
+                });
+        }
+
+        document.getElementById('collapsibleContent').classList.add('collapsed');
+        document.getElementById('summaryCompactRow').classList.add('show');
+        loadDevice();
+
+        function toggleUserMenu() { document.getElementById('userMenuWrap').classList.toggle('open'); }
+        document.addEventListener('click', function(e) {
+            var wrap = document.getElementById('userMenuWrap');
+            if (wrap && !wrap.contains(e.target)) wrap.classList.remove('open');
+        });
+    </script>
+</body>
+</html>
