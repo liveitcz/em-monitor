@@ -1,6 +1,6 @@
 # Energy Monitor (EM)
 
-Web-based PoE monitoring platform for Cisco switches.
+Web-based MAC, VLANs and PoE device mapping
 
 Monitors power consumption, port status and device inventory via SNMP.
 
