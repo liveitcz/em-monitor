@@ -116,7 +116,8 @@
                 </div>
                 <div class="info-row">
                     <span class="info-label" data-i18n="common.account_status">Stav &#250;&#269;tu</span>
-                    <span class="info-value" style="color:{% if user.is_active %}#059669{% else %}#dc2626{% endif %}">
+                    <span class="info-value" style="color:{% if user.is_active %}#059669{% else %}#dc2626{% endif %}"
+                          data-i18n="{% if user.is_active %}profile.status_active{% else %}profile.status_inactive{% endif %}">
                         {% if user.is_active %}✅ Aktivní{% else %}🚫 Deaktivovaný{% endif %}
                     </span>
                 </div>
