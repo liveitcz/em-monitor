@@ -156,7 +156,9 @@
     "placeholder_new_pwd": "At least 4 characters",
     "label_new_pwd2": "Repeat new password",
     "placeholder_new_pwd2": "Repeat the new password",
-    "change_pwd_btn": "🔒 Change password"
+    "change_pwd_btn": "🔒 Change password",
+    "status_active": "✅ Active",
+    "status_inactive": "🚫 Deactivated"
   },
   "user_mgmt": {
     "title": "👥 User management",
