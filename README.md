@@ -1,6 +1,6 @@
 # Energy Monitor (EM)
 
-Web-based MAC, VLANs and PoE device mapping
+Web-based MAC, VLANs and PoE device mapping for Cisco switches
 
 Monitors power consumption, port status and device inventory via SNMP.
 
