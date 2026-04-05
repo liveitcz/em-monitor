@@ -22,9 +22,7 @@ services:
       - ${EM_ROOT}/config:/app/config
       - ${EM_ROOT}/templates:/app/templates
       - ${EM_ROOT}/static:/app/static
-      - ${EM_ROOT}/languages:/app/languages
       - ${EM_ROOT}/logs:/app/logs
-      - ${EM_ROOT}/mibs:/opt/mibs:ro
       - ${EM_ROOT}/snmp_helper.py:/app/snmp_helper.py
       - ${EM_ROOT}/detail_ports.py:/app/detail_ports.py
       - ${EM_ROOT}/arp.py:/app/arp.py
