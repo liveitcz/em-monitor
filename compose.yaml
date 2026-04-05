@@ -31,7 +31,5 @@ services:
       - ${EM_ROOT}/snmp_detail.py:/app/snmp_detail.py
     environment:
       - TZ=Europe/Prague
-      - MIBDIRS=/opt/mibs/cisco:/opt/mibs/standard:/usr/share/snmp/mibs
-      - MIBS=+ALL
       - EM_PORT=4999
     restart: on-failure:5
