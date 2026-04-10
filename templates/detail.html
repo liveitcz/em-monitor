@@ -15,6 +15,13 @@
         .header-right { display: flex; align-items: center; gap: 15px; }
         .back-link { color: #667eea; text-decoration: none; font-weight: 600; white-space: nowrap; }
         .back-link:hover { text-decoration: underline; }
+        .home-link {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: #667eea; text-decoration: none; font-weight: 700; font-size: 13px;
+            background: #f0f0ff; padding: 6px 12px; border-radius: 6px;
+            border: 1.5px solid #c7d2fe; white-space: nowrap; transition: background 0.15s;
+        }
+        .home-link:hover { background: #e0e7ff; }
 
         /* Lang switcher */
         .em-lang-switch { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; color: #6b7280; user-select: none; }
@@ -93,12 +100,14 @@
     <div class="container">
         <div class="header">
             <div class="header-top">
-                <div>
-                    <h1 id="deviceName">⚡ Načítání...</h1>
-                    <div class="device-info" id="deviceInfo"></div>
+                <div style="display:flex;align-items:center;gap:16px;">
+                    <a href="/" class="home-link" data-i18n="common.home">🏠 DOMŮ</a>
+                    <div>
+                        <h1 id="deviceName">⚡ Načítání...</h1>
+                        <div class="device-info" id="deviceInfo"></div>
+                    </div>
                 </div>
                 <div class="header-right">
-                    <a href="/" class="back-link" data-i18n="nav.back">← Zpět na přehled</a>
                     <!-- Lang switcher -->
                     <span class="em-lang-switch">
                         <span class="em-lang-btn" id="em-lang-cs" onclick="emI18n.setLang('cs')">CZ</span>
@@ -118,6 +127,7 @@
                             <a href="/profile" class="user-menu-item">✏️ <span data-i18n="nav.profile">Upravit profil</span></a>
                             {% if is_admin %}
                             <a href="/admin/users" class="user-menu-item">👥 <span data-i18n="nav.users">Správa uživatelů</span></a>
+                            <a href="/settings" class="user-menu-item">⚙️ <span data-i18n="nav.settings">Nastavení</span></a>
                             {% endif %}
                             <div class="user-menu-divider"></div>
                             <a href="/logout" class="user-menu-item danger">🚪 <span data-i18n="nav.logout">Odhlásit se</span></a>

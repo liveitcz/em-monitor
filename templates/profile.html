@@ -27,6 +27,14 @@
         .header-title .subtitle { color: #6b7280; font-size: 14px; margin-top: 2px; }
         .back-link { color: #667eea; text-decoration: none; font-weight: 600; font-size: 14px; }
         .back-link:hover { text-decoration: underline; }
+        .home-link {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: #667eea; text-decoration: none; font-weight: 700; font-size: 13px;
+            background: #f0f0ff; padding: 6px 12px; border-radius: 6px;
+            border: 1.5px solid #c7d2fe; white-space: nowrap; transition: background 0.15s;
+        }
+        .home-link:hover { background: #e0e7ff; }
+
         .two-col {
             display: grid;
             grid-template-columns: 1fr 1.6fr;
@@ -70,18 +78,21 @@
 </head>
 <body>
 <div class="container">
-    <div class="header">
-        <div class="header-title">
-            <h1>👤 Můj profil &mdash; {{ current_user }}</h1>
-            <div class="subtitle" data-i18n="profile.subtitle">Spr&#225;va va&#353;eho &#250;&#269;tu</div>
+    <div class="header" style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="display:flex;align-items:center;gap:16px;">
+            <a href="/" class="home-link" data-i18n="common.home">🏠 DOMŮ</a>
+            <div class="header-title">
+                <h1>👤 Můj profil &mdash; {{ current_user }}</h1>
+                <div class="subtitle" data-i18n="profile.subtitle">Správa vašeho účtu</div>
+            </div>
         </div>
         <div style="display:flex;align-items:center;gap:12px;">
-            <a href="/" class="back-link" data-i18n="profile.back_overview">&larr; Zpět na přehled</a>
             <span class="em-lang-switch">
                 <span class="em-lang-btn" id="em-lang-cs" onclick="window.emI18n && window.emI18n.setLang('cs')">CZ</span>
                 <span class="em-lang-sep">|</span>
                 <span class="em-lang-btn" id="em-lang-en" onclick="window.emI18n && window.emI18n.setLang('en')">EN</span>
             </span>
+            {% if is_admin %}<a href="/settings" class="back-link" style="font-size:13px;">⚙️ <span data-i18n="nav.settings">Nastavení</span></a>{% endif %}
         </div>
     </div>
     <div class="two-col">

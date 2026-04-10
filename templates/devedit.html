@@ -45,6 +45,14 @@
             font-size: 16px;
         }
         .back-link:hover { text-decoration: underline; }
+        .home-link {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: #667eea; text-decoration: none; font-weight: 700; font-size: 13px;
+            background: #f0f0ff; padding: 6px 12px; border-radius: 6px;
+            border: 1.5px solid #c7d2fe; white-space: nowrap; transition: background 0.15s;
+        }
+        .home-link:hover { background: #e0e7ff; }
+
         /* ---- User dropdown menu ---- */
         .user-menu-wrap {
             position: relative;
@@ -264,10 +272,12 @@
     <div class="container">
         <div class="header">
             <div class="header-top">
-                <h1 data-i18n="devedit.title">⚡ Správa zařízení</h1>
+                <div style="display:flex;align-items:center;gap:16px;">
+                    <a href="/" class="home-link" data-i18n="common.home">🏠 DOMŮ</a>
+                    <h1 data-i18n="devedit.title">⚡ Správa zařízení</h1>
+                </div>
                 <div class="header-buttons">
-                    <a href="/add-remove" class="back-link" style="margin-right: 20px;" data-i18n="devedit.change_log">📋 LOG změn</a>
-                    <a href="/" class="back-link" data-i18n="devedit.back_overview">← Zpět na přehled</a>
+                    <a href="/add-remove" class="back-link" data-i18n="devedit.change_log">📋 LOG změn</a>
                 <span class="em-lang-switch">
                     <span class="em-lang-btn" id="em-lang-cs" onclick="window.emI18n && window.emI18n.setLang('cs')">CZ</span>
                     <span class="em-lang-sep">|</span>
@@ -285,6 +295,7 @@
                         <a href="/profile" class="user-menu-item" data-i18n="usermenu.edit_profile">✏️ Upravit profil</a>
                         {% if is_admin %}
                         <a href="/admin/users" class="user-menu-item" data-i18n="usermenu.manage_users">👥 Správa uživatelů</a>
+                        <a href="/settings" class="user-menu-item" data-i18n="usermenu.settings">⚙️ Nastavení</a>
                         {% endif %}
                         <div class="user-menu-divider"></div>
                         <a href="/logout" class="user-menu-item danger" data-i18n="usermenu.logout">🚪 Odhlásit se</a>

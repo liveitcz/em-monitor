@@ -252,6 +252,7 @@
                             <a href="/profile" class="user-menu-item">✏️ <span data-i18n="nav.profile">Upravit profil</span></a>
                             {% if is_admin %}
                             <a href="/admin/users" class="user-menu-item">👥 <span data-i18n="nav.users">Správa uživatelů</span></a>
+                            <a href="/settings" class="user-menu-item">⚙️ <span data-i18n="nav.settings">Nastavení</span></a>
                             {% endif %}
                             <div class="user-menu-divider"></div>
                             <a href="/logout" class="user-menu-item danger">🚪 <span data-i18n="nav.logout">Odhlásit se</span></a>
@@ -341,32 +342,8 @@
                     </span>
                 </div>
 
-                <!-- FILTERS -->
-                <div class="filters-container">
-                    <div class="filter-group">
-                        <label class="filter-label" data-i18n="filter.area">Oblast</label>
-                        <select id="filterArea" class="filter-select" onchange="applyFilters()">
-                            <option value="" data-i18n="filter.all">Všechny</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label" data-i18n="filter.rack">Rozvaděč</label>
-                        <select id="filterRack" class="filter-select" onchange="applyFilters()">
-                            <option value="" data-i18n="filter.all">Všechny</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label" data-i18n="filter.type">Typ</label>
-                        <select id="filterType" class="filter-select" onchange="applyFilters()">
-                            <option value="" data-i18n="filter.all">Všechny</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label" data-i18n="filter.model">Model</label>
-                        <select id="filterModel" class="filter-select" onchange="applyFilters()">
-                            <option value="" data-i18n="filter.all">Všechny</option>
-                        </select>
-                    </div>
+                <!-- FILTERS — dynamically rendered from /api/settings -->
+                <div class="filters-container" id="filtersContainer">
                     <button class="filter-clear-btn" onclick="clearFilters()" data-i18n="filter.clear">Vymazat filtry</button>
                 </div>
 
@@ -497,12 +474,19 @@
             }
         }
 
-        var currentView = 'table';
-        var allDevices = [];
+        // ── Settings + filter state ───────────────────────────────────────────
+        var _emSettings   = null;
+        var _nameFields   = [];
+        var _sep          = '-';
+        var _showType     = true;
+        var _showModel    = true;
+        var filterState   = {};
+
+        var currentView    = 'table';
+        var allDevices     = [];
         var filteredDevices = [];
-        var sortColumn = null;
-        var sortDirection = 'asc';
-        var filterState = { area: '', rack: '', type: '', model: '' };
+        var sortColumn     = null;
+        var sortDirection  = 'asc';
 
         function extractType(model) {
             if (!model) return '';
@@ -555,36 +539,124 @@
                 });
         }
 
+        // ── Load settings THEN devices ────────────────────────────────────────
+        function loadSettings() {
+            fetch('/api/settings')
+                .then(function(r) { return r.json(); })
+                .then(function(s) {
+                    _emSettings = s;
+                    _sep       = s.name_separator || '-';
+                    try { _nameFields = JSON.parse(s.name_fields || '[]'); } catch(e) { _nameFields = []; }
+                    _showType  = (s.show_type_filter  !== '0');
+                    _showModel = (s.show_model_filter !== '0');
+                    filterState = {};
+                    _nameFields.forEach(function(f) { filterState['nf_' + f.pos] = ''; });
+                    if (_showType)  filterState.type  = '';
+                    if (_showModel) filterState.model = '';
+                    loadDevices();
+                })
+                .catch(function() {
+                    _nameFields = [{pos:0,  label_cs:'Oblast',    label_en:'Area'},
+                                   {pos:-1, label_cs:'Rozvačeč', label_en:'Rack'}];
+                    _showType = true; _showModel = true;
+                    filterState = {'nf_0':'', 'nf_-1':'', type:'', model:''};
+                    loadDevices();
+                });
+        }
+
         function buildFilterOptions() {
-            var areas = new Set(), racks = new Set(), types = new Set(), models = new Set();
+            var fieldSets = {};
+            _nameFields.forEach(function(f) { fieldSets[f.pos] = new Set(); });
+            var types  = new Set();
+            var models = new Set();
+
             allDevices.forEach(function(d) {
                 if (d.device_name) {
-                    var parts = d.device_name.split('-');
-                    if (parts.length > 0) areas.add(parts[0]);
-                    if (parts.length > 1) racks.add(parts[parts.length - 1]);
+                    var parts = d.device_name.split(_sep);
+                    _nameFields.forEach(function(f) {
+                        var idx = (f.pos >= 0) ? f.pos : parts.length + f.pos;
+                        if (idx >= 0 && idx < parts.length && parts[idx]) {
+                            fieldSets[f.pos].add(parts[idx]);
+                        }
+                    });
                 }
                 if (d.device_model) {
-                    models.add(d.device_model);
-                    var type = extractType(d.device_model);
-                    if (type) types.add(type);
+                    if (_showModel) models.add(d.device_model);
+                    if (_showType)  { var t = extractType(d.device_model); if (t) types.add(t); }
                 }
             });
-            var allOpt = '<option value="">' + (emI18n.t('filter.all') || 'Všechny') + '</option>';
-            document.getElementById('filterArea').innerHTML  = allOpt + Array.from(areas).sort().map(function(a)  { return '<option value="' + a + '">' + a + '</option>'; }).join('');
-            document.getElementById('filterRack').innerHTML  = allOpt + Array.from(racks).sort().map(function(r)  { return '<option value="' + r + '">' + r + '</option>'; }).join('');
-            document.getElementById('filterType').innerHTML  = allOpt + Array.from(types).sort().map(function(t)  { return '<option value="' + t + '">' + t + '</option>'; }).join('');
-            document.getElementById('filterModel').innerHTML = allOpt + Array.from(models).sort().map(function(m) { return '<option value="' + m + '">' + m + '</option>'; }).join('');
+
+            var uiLang = (window.emI18n && window.emI18n.getLang) ? window.emI18n.getLang() : 'cs';
+            // Get correct "All" label — use EN if lang is EN, otherwise CZ
+            var allLabel = (uiLang === 'en') ? 'ALL' : 'Všechny';
+            var allOpt   = '<option value="">' + allLabel + '</option>';
+
+            var container = document.getElementById('filtersContainer');
+            container.querySelectorAll('.filter-group').forEach(function(g) { g.remove(); });
+            container.querySelectorAll('.filter-none-msg').forEach(function(g) { g.remove(); });
+            var clearBtn = container.querySelector('.filter-clear-btn');
+
+            _nameFields.forEach(function(f) {
+                var label = (uiLang === 'en' && f.label_en) ? f.label_en : (f.label_cs || String(f.pos));
+                var selId = 'nfFilter_' + f.pos;
+                var opts  = allOpt + Array.from(fieldSets[f.pos]).sort()
+                    .map(function(v) { return '<option value="' + v + '">' + v + '</option>'; }).join('');
+                var grp = document.createElement('div');
+                grp.className = 'filter-group';
+                grp.innerHTML = '<label class="filter-label" for="' + selId + '">' + label + '</label>'
+                    + '<select id="' + selId + '" class="filter-select" onchange="applyFilters()">' + opts + '</select>';
+                container.insertBefore(grp, clearBtn);
+            });
+
+            if (_showType) {
+                var opts = allOpt + Array.from(types).sort()
+                    .map(function(t) { return '<option value="' + t + '">' + t + '</option>'; }).join('');
+                var grp = document.createElement('div');
+                grp.className = 'filter-group';
+                grp.innerHTML = '<label class="filter-label" for="filterType">' + (uiLang==='en'?'Type':'Typ') + '</label>'
+                    + '<select id="filterType" class="filter-select" onchange="applyFilters()">' + opts + '</select>';
+                container.insertBefore(grp, clearBtn);
+            }
+            if (_showModel) {
+                var opts = allOpt + Array.from(models).sort()
+                    .map(function(m) { return '<option value="' + m + '">' + m + '</option>'; }).join('');
+                var grp = document.createElement('div');
+                grp.className = 'filter-group';
+                grp.innerHTML = '<label class="filter-label" for="filterModel">Model</label>'
+                    + '<select id="filterModel" class="filter-select" onchange="applyFilters()">' + opts + '</select>';
+                container.insertBefore(grp, clearBtn);
+            }
+            // Show help message if no filters at all
+            var hasFilters = container.querySelectorAll('.filter-group').length > 0;
+            if (!hasFilters) {
+                var msg = document.createElement('span');
+                msg.className = 'filter-none-msg';
+                msg.style.cssText = 'font-size:12px;color:#9ca3af;align-self:center;';
+                msg.textContent = '—';
+                container.insertBefore(msg, clearBtn);
+            }
         }
 
         function applyFilters() {
-            filterState.area  = document.getElementById('filterArea').value;
-            filterState.rack  = document.getElementById('filterRack').value;
-            filterState.type  = document.getElementById('filterType').value;
-            filterState.model = document.getElementById('filterModel').value;
+            _nameFields.forEach(function(f) {
+                var el = document.getElementById('nfFilter_' + f.pos);
+                filterState['nf_' + f.pos] = el ? el.value : '';
+            });
+            var typeEl  = document.getElementById('filterType');
+            var modelEl = document.getElementById('filterModel');
+            if (typeEl)  filterState.type  = typeEl.value;
+            if (modelEl) filterState.model = modelEl.value;
+
             filteredDevices = allDevices.filter(function(d) {
-                if (filterState.area  && !d.device_name.startsWith(filterState.area))        return false;
-                if (filterState.rack  && !d.device_name.endsWith(filterState.rack))          return false;
-                if (filterState.type  && extractType(d.device_model) !== filterState.type)   return false;
+                var nameParts = (d.device_name || '').split(_sep);
+                for (var i = 0; i < _nameFields.length; i++) {
+                    var f   = _nameFields[i];
+                    var val = filterState['nf_' + f.pos];
+                    if (!val) continue;
+                    var idx = (f.pos >= 0) ? f.pos : nameParts.length + f.pos;
+                    if (nameParts[idx] !== val) return false;
+                }
+                if (filterState.type  && extractType(d.device_model) !== filterState.type)  return false;
                 if (filterState.model && d.device_model !== filterState.model)               return false;
                 return true;
             });
@@ -594,8 +666,8 @@
         }
 
         function clearFilters() {
-            ['filterArea','filterRack','filterType','filterModel'].forEach(function(id) { document.getElementById(id).value = ''; });
-            filterState = { area: '', rack: '', type: '', model: '' };
+            document.querySelectorAll('#filtersContainer select').forEach(function(s) { s.value = ''; });
+            Object.keys(filterState).forEach(function(k) { filterState[k] = ''; });
             filteredDevices = allDevices.slice();
             document.getElementById('deviceCount').textContent = filteredDevices.length;
             updatePortCounts(filteredDevices);
@@ -719,7 +791,12 @@
             if (allDevices.length > 0) buildFilterOptions();
         }
 
-        loadDevices();
+        // Rebuild filters when language switches (ALL↔Všechny)
+        window.onLangChange = function(lang) {
+            if (allDevices.length > 0) buildFilterOptions();
+        };
+
+        loadSettings();
 
         // Init collapsed
         document.getElementById('collapsibleContent').classList.add('collapsed');
