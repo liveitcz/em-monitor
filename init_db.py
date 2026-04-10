@@ -150,6 +150,30 @@ def init_database():
             CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)
         ''')
 
+        # ================================================================
+        # APP SETTINGS TABLE
+        # ================================================================
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS app_settings (
+                key   TEXT PRIMARY KEY,
+                value TEXT NOT NULL DEFAULT \'\'
+            )
+        ''')
+        _defaults = [
+            ('lang',              'cs'),
+            ('timezone',          'Europe/Prague'),
+            ('datetime_format',   '%d.%m.%Y %H:%M'),
+            ('name_separator',    '-'),
+            ('name_fields',       '[{"pos":0,"label_cs":"Oblast","label_en":"Area"},{"pos":-1,"label_cs":"Rozva\u010de\u010d","label_en":"Rack"}]'),
+            ('show_type_filter',  '1'),
+            ('show_model_filter', '1'),
+        ]
+        for _k, _v in _defaults:
+            cursor.execute(
+                'INSERT OR IGNORE INTO app_settings (key, value) VALUES (?, ?)',
+                (_k, _v)
+            )
+
         conn.commit()
         
         # Migrate from auth.json
@@ -163,6 +187,7 @@ def init_database():
         logger.info("   - poe_mac_addresses: (device_ip, ifIndex, mac_address) (PK)")
         logger.info("   - poe_vlan_names: (device_ip, vlan_id) (PK)")
         logger.info("   - users: username (UNIQUE)")
+        logger.info("   - app_settings: global configuration")
         
         conn.close()
         return True

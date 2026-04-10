@@ -148,6 +148,53 @@ def get_db():
     return conn
 
 
+# ================================================================
+# APP SETTINGS HELPERS
+# ================================================================
+
+def get_setting(key, default=''):
+    """Read single setting from app_settings table."""
+    try:
+        conn = sqlite3.connect(DB_PATH, timeout=5.0)
+        cursor = conn.cursor()
+        cursor.execute('SELECT value FROM app_settings WHERE key = ?', (key,))
+        row = cursor.fetchone()
+        conn.close()
+        return row[0] if row else default
+    except Exception:
+        return default
+
+
+def set_setting(key, value):
+    """Write single setting to app_settings table."""
+    try:
+        conn = sqlite3.connect(DB_PATH, timeout=5.0)
+        cursor = conn.cursor()
+        cursor.execute(
+            'INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)',
+            (key, str(value))
+        )
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        logger.error(f'set_setting error: {e}')
+        return False
+
+
+def get_all_settings():
+    """Return all settings as dict."""
+    try:
+        conn = sqlite3.connect(DB_PATH, timeout=5.0)
+        cursor = conn.cursor()
+        cursor.execute('SELECT key, value FROM app_settings')
+        rows = cursor.fetchall()
+        conn.close()
+        return {r[0]: r[1] for r in rows}
+    except Exception:
+        return {}
+
+
 def ensure_device_changes_table():
     """Ensure device_changes table exists"""
     try:
@@ -197,7 +244,8 @@ def inject_user():
     return {
         'current_user': session.get('username', ''),
         'current_role': session.get('role', ''),
-        'is_admin': session.get('role') == 'admin'
+        'is_admin': session.get('role') == 'admin',
+        'app_lang': session.get('lang', get_setting('lang', 'cs')),
     }
 
 
@@ -214,6 +262,7 @@ def login():
             session['username'] = user['username']
             session['role'] = user['role']
             session['full_name'] = user.get('full_name', '') or user['username']
+            session['lang'] = get_setting('lang', 'cs')
             update_last_login(username)
             logger.info(f"User {username} ({user['role']}) logged in")
             return redirect(url_for('index'))
@@ -1314,6 +1363,184 @@ def api_mac_vlans_data():
     except Exception as e:
         logger.error(f"api_mac_vlans_data error: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+# ================================================================
+# SETTINGS ROUTES
+# ================================================================
+
+@app.route('/settings')
+@login_required
+def settings_page():
+    if session.get('role') != 'admin':
+        return redirect(url_for('index'))
+    s = get_all_settings()
+    return render_template('settings.html', settings=s)
+
+
+@app.route('/api/settings')
+@login_required
+def api_settings_get():
+    return jsonify(get_all_settings())
+
+
+@app.route('/api/settings/save', methods=['POST'])
+@login_required
+def api_settings_save():
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'error': 'Admin required'}), 403
+    data = request.get_json() or {}
+    allowed = {'lang', 'timezone', 'datetime_format', 'name_separator',
+               'name_fields', 'show_type_filter', 'show_model_filter'}
+    pairs = []
+    for key, val in data.items():
+        if key in allowed:
+            v = val if isinstance(val, str) else json.dumps(val, ensure_ascii=False)
+            pairs.append((key, v))
+    if not pairs:
+        return jsonify({'success': True, 'saved': []})
+    # Single connection, single transaction — much faster on NAS/slow storage
+    try:
+        conn = sqlite3.connect(DB_PATH, timeout=10.0)
+        conn.execute('PRAGMA synchronous=NORMAL')
+        cursor = conn.cursor()
+        cursor.executemany(
+            'INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)', pairs
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.error(f'api_settings_save DB error: {e}')
+        return jsonify({'success': False, 'error': str(e)})
+    saved = [k for k, _ in pairs]
+    if 'lang' in saved:
+        session['lang'] = data.get('lang', 'cs')
+    logger.info(f"Settings saved by {session.get('username')}: {saved}")
+    return jsonify({'success': True, 'saved': saved})
+
+
+# ================================================================
+# BACKUP ROUTES
+# ================================================================
+
+BACKUP_DIR = '/app/data/backups'
+
+
+def _export_users_sql():
+    """Export users table as SQL INSERT statements."""
+    lines = [
+        '-- EM users backup\n',
+        '-- Restore: sqlite3 /app/data/energy.db < users_backup.sql\n\n',
+    ]
+    try:
+        conn = sqlite3.connect(DB_PATH, timeout=5.0)
+        cursor = conn.cursor()
+        cursor.execute(
+            'SELECT id, username, password_hash, role, full_name, email, created_at, is_active FROM users'
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        lines.append('DELETE FROM users;\n')
+        for row in rows:
+            vals = ', '.join([
+                'NULL' if v is None
+                else f"'{str(v).replace(chr(39), chr(39)*2)}'"
+                for v in row
+            ])
+            lines.append(
+                'INSERT INTO users (id, username, password_hash, role, full_name, email, created_at, is_active)'
+                f' VALUES ({vals});\n'
+            )
+    except Exception as e:
+        lines.append(f'-- Error exporting users: {e}\n')
+    return ''.join(lines)
+
+
+@app.route('/api/backup/create', methods=['POST'])
+@login_required
+def api_backup_create():
+    import tarfile, io
+    if session.get('role') != 'admin':
+        return jsonify({'ok': False, 'msg': 'Admin required'}), 403
+    data   = request.get_json() or {}
+    btype  = data.get('type', 'core')   # 'core' | 'credentials'
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+    now    = datetime.datetime.now().strftime('%d-%m-%Y_%H-%M')
+    suffix = 'core' if btype == 'core' else 'with_credentials'
+    fname  = f'em-backup_{now}_{suffix}.tar.gz'
+    out    = os.path.join(BACKUP_DIR, fname)
+    try:
+        with tarfile.open(out, 'w:gz') as tar:
+            config_dir = '/app/config'
+            if os.path.isdir(config_dir):
+                tar.add(config_dir, arcname='config')
+            if btype == 'credentials':
+                sql_bytes = _export_users_sql().encode('utf-8')
+                ti = tarfile.TarInfo(name='users_backup.sql')
+                ti.size = len(sql_bytes)
+                tar.addfile(ti, io.BytesIO(sql_bytes))
+        size_kb = os.path.getsize(out) // 1024
+        size_str = f'{size_kb} KB' if size_kb < 1024 else f'{size_kb/1024:.1f} MB'
+        logger.info(f"Backup created by {session.get('username')}: {fname} ({size_str})")
+        return jsonify({'ok': True, 'filename': fname, 'size': size_str,
+                        'download_url': f'/api/backup/download/{fname}'})
+    except Exception as e:
+        return jsonify({'ok': False, 'msg': str(e)})
+
+
+@app.route('/api/backup/download/<filename>')
+@login_required
+def api_backup_download(filename):
+    from flask import send_file
+    if session.get('role') != 'admin':
+        return 'Forbidden', 403
+    if '/' in filename or '..' in filename or not filename.endswith('.tar.gz'):
+        return 'Invalid filename', 400
+    path = os.path.join(BACKUP_DIR, filename)
+    if not os.path.exists(path):
+        return 'Not found', 404
+    return send_file(path, as_attachment=True, download_name=filename)
+
+
+@app.route('/api/backup/list')
+@login_required
+def api_backup_list():
+    if session.get('role') != 'admin':
+        return jsonify({'backups': []})
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+    backups = []
+    for fname in sorted(os.listdir(BACKUP_DIR), reverse=True):
+        if not fname.endswith('.tar.gz'):
+            continue
+        path = os.path.join(BACKUP_DIR, fname)
+        st   = os.stat(path)
+        size_kb = st.st_size // 1024
+        size_str = f'{size_kb} KB' if size_kb < 1024 else f'{size_kb/1024:.1f} MB'
+        btype = 'credentials' if 'with_credentials' in fname else 'core'
+        backups.append({
+            'filename': fname,
+            'size':     size_str,
+            'date':     datetime.datetime.fromtimestamp(st.st_mtime).strftime('%d.%m.%Y %H:%M'),
+            'type':     btype,
+        })
+    return jsonify({'backups': backups})
+
+
+@app.route('/api/backup/delete', methods=['POST'])
+@login_required
+def api_backup_delete():
+    if session.get('role') != 'admin':
+        return jsonify({'ok': False, 'msg': 'Admin required'}), 403
+    data  = request.get_json() or {}
+    fname = data.get('filename', '')
+    if '/' in fname or '..' in fname or not fname.endswith('.tar.gz'):
+        return jsonify({'ok': False, 'msg': 'Invalid filename'})
+    path = os.path.join(BACKUP_DIR, fname)
+    try:
+        os.remove(path)
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'ok': False, 'msg': str(e)})
 
 
 if __name__ == '__main__':
