@@ -18,6 +18,7 @@ import json
 import datetime
 from functools import wraps
 import ipaddress
+import re
 import threading
 from concurrent.futures import ProcessPoolExecutor
 try:
@@ -682,7 +683,6 @@ def api_device_detail(device_ip):
             SELECT {', '.join(select_cols)}
             FROM poe_ports
             WHERE device_ip = ?
-            AND port_name NOT LIKE 'Po%'
             AND port_name NOT LIKE '%--Uncontrolled'
             AND port_name NOT LIKE '%--Controlled'
             ORDER BY ifIndex
@@ -761,22 +761,42 @@ def api_device_detail(device_ip):
         return jsonify({'error': str(e)}), 500
 
 
+def normalize_mac(raw):
+    """
+    Normalize MAC address to xx:xx:xx:xx:xx:xx format.
+    Accepts:
+      00:fc:ba:04:f7:2d  (colon-separated)   → 00:fc:ba:04:f7:2d
+      00-fc-ba-04-f7-2d  (dash-separated)    → 00:fc:ba:04:f7:2d
+      00fc.ba04.f72d     (Cisco dot notation) → 00:fc:ba:04:f7:2d
+      00fcba04f72d       (raw hex 12 chars)   → 00:fc:ba:04:f7:2d
+    Returns normalized string, or None if input is invalid.
+    """
+    s = raw.lower().strip()
+    # Remove all separators and whitespace
+    hex_only = re.sub(r'[:\-\. ]', '', s)
+    if not re.fullmatch(r'[0-9a-f]{12}', hex_only):
+        return None
+    # Rebuild as colon-separated pairs
+    return ':'.join(hex_only[i:i+2] for i in range(0, 12, 2))
+
+
 @app.route('/api/search_mac')
 @login_required
 def search_mac():
     """
-    Search for MAC address across all devices - FROM OLD WORKING VERSION
-    Format: /api/search_mac?mac=70:b5:e8:5d:64:9d
+    Search for MAC address across all devices.
+    Accepts multiple MAC formats:
+      00:fc:ba:04:f7:2d  (colon-separated)
+      00-fc-ba-04-f7-2d  (dash-separated)
+      00fc.ba04.f72d     (Cisco dot notation)
+      00fcba04f72d       (raw hex)
     Returns: {found: true/false, device_name, port_name, ...}
-    FILTERS:
-    - Excludes trunk ports (port_vlan_id IS NULL or 0)
-    - Excludes PortChannels (Po*)
-    - Only access ports with single VLAN
     """
-    mac = request.args.get('mac', '').lower().strip()
-    
+    raw_mac = request.args.get('mac', '').strip()
+    mac = normalize_mac(raw_mac)
+
     if not mac:
-        response = jsonify({'found': False, 'error': 'No MAC address provided'})
+        response = jsonify({'found': False, 'error': f'Invalid MAC address format: {raw_mac}'})
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
         return response, 400
     
