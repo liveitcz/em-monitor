@@ -268,17 +268,43 @@
             }
         }
 
-        function formatPowerWithUnit(watts) {
-            if (!watts) return '0 <small style="font-size:0.6em;opacity:0.9;">W</small>';
-            if (watts >= 1000) return (watts/1000).toFixed(2) + ' <small style="font-size:0.6em;opacity:0.9;">kW</small>';
+        var _poeDetailUnit = 'W'; // 'W' or 'kW' — loaded from /api/settings
+
+        function formatPowerDetail(watts) {
+            // Pro stat karty — s jednotkou
+            if (watts === null || watts === undefined || !watts) return '0 <small style="font-size:0.6em;opacity:0.9;">' + _poeDetailUnit + '</small>';
+            if (_poeDetailUnit === 'kW') return (watts/1000).toFixed(2) + ' <small style="font-size:0.6em;opacity:0.9;">kW</small>';
             return watts.toFixed(1) + ' <small style="font-size:0.6em;opacity:0.9;">W</small>';
         }
+
+        function formatPowerRow(watts) {
+            // Pro řádky tabulky — BEZ jednotky (je v záhlaví)
+            if (!watts) return '0';
+            if (_poeDetailUnit === 'kW') return (watts/1000).toFixed(3);
+            return watts.toFixed(3);
+        }
+
+        function updateDetailPowerHeader() {
+            var el = document.querySelector('th[data-i18n="col.power"]');
+            if (el) {
+                var isEN = localStorage.getItem('em-lang') === 'en';
+                el.textContent = (isEN ? 'Consumption' : 'Spotřeba') + ' (' + _poeDetailUnit + ')';
+            }
+        }
+
+        // Alias pro zpětnou kompatibilitu
+        var formatPowerWithUnit = formatPowerDetail;
         function formatPercentage(pct) {
             if (pct === null || pct === undefined) return '-';
             return pct.toFixed(2) + ' <small style="font-size:0.6em;opacity:0.9;">%</small>';
         }
 
         function loadDevice() {
+            // Načti jednotky z nastavení
+            fetch('/api/settings')
+                .then(function(r) { return r.json(); })
+                .then(function(s) { _poeDetailUnit = s.poe_detail_unit || s.poe_unit || 'W'; updateDetailPowerHeader(); })
+                .catch(function() { _poeDetailUnit = 'W'; });
             Promise.all([
                 fetch(`/api/device/${deviceIp}`).then(r => r.json()),
                 fetch(`/api/device_detail/${deviceIp}`).then(r => r.json())
@@ -286,13 +312,13 @@
                 const device = deviceData.current || deviceData;
                 document.getElementById('deviceName').textContent = `⚡ ${device.device_name}`;
                 document.getElementById('deviceInfo').textContent = `(${device.device_model} | ${device.device_ip} | SN: ${device.device_serial})`;
-                document.getElementById('poeBudget').innerHTML   = formatPowerWithUnit(device.poe_available);
-                document.getElementById('poeUsed').innerHTML     = formatPowerWithUnit(device.poe_used);
-                document.getElementById('poeRemaining').innerHTML = formatPowerWithUnit(device.poe_remaining);
+                document.getElementById('poeBudget').innerHTML   = formatPowerDetail(device.poe_available);
+                document.getElementById('poeUsed').innerHTML     = formatPowerDetail(device.poe_used);
+                document.getElementById('poeRemaining').innerHTML = formatPowerDetail(device.poe_remaining);
                 document.getElementById('poePercentage').innerHTML = formatPercentage(device.poe_percentage);
-                document.getElementById('compactBudget').innerHTML    = formatPowerWithUnit(device.poe_available);
-                document.getElementById('compactUsed').innerHTML      = formatPowerWithUnit(device.poe_used);
-                document.getElementById('compactRemaining').innerHTML = formatPowerWithUnit(device.poe_remaining);
+                document.getElementById('compactBudget').innerHTML    = formatPowerDetail(device.poe_available);
+                document.getElementById('compactUsed').innerHTML      = formatPowerDetail(device.poe_used);
+                document.getElementById('compactRemaining').innerHTML = formatPowerDetail(device.poe_remaining);
                 document.getElementById('compactPercentage').innerHTML = formatPercentage(device.poe_percentage);
                 renderPorts(portsData.ports || []);
                 document.getElementById('spinner').style.display = 'none';
@@ -335,7 +361,7 @@
                     <td><strong>${p.port_name}</strong></td>
                     <td>${p.port_description || '-'}</td>
                     ${macVlanHtml}
-                    <td class="${powerClass}">${pw.toFixed(3)}</td>
+                    <td class="${powerClass}">${formatPowerRow(pw)}</td>
                     <td class="status-center">${statusDot}</td>
                 </tr>`;
             }).join('');

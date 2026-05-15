@@ -494,16 +494,32 @@
             return match ? match[1] : '';
         }
 
+        var _poeUnit = 'W'; // 'W' or 'kW' — loaded from /api/settings
+
         function formatPower(watts) {
             if (watts === null || watts === undefined || watts === 0) return '0';
-            if (watts >= 1000) return (watts / 1000).toFixed(2);
+            if (_poeUnit === 'kW') return (watts / 1000).toFixed(2);
             return watts.toFixed(1);
         }
 
         function formatPowerWithUnit(watts) {
-            if (watts === null || watts === undefined || watts === 0) return '0 <small style="font-size:0.6em;opacity:0.9;">W</small>';
-            if (watts >= 1000) return (watts / 1000).toFixed(2) + ' <small style="font-size:0.6em;opacity:0.9;">kW</small>';
+            if (watts === null || watts === undefined || watts === 0) return '0 <small style="font-size:0.6em;opacity:0.9;">' + _poeUnit + '</small>';
+            if (_poeUnit === 'kW') return (watts / 1000).toFixed(2) + ' <small style="font-size:0.6em;opacity:0.9;">kW</small>';
             return watts.toFixed(1) + ' <small style="font-size:0.6em;opacity:0.9;">W</small>';
+        }
+
+        function updatePoEHeaders() {
+            var u = ' (' + _poeUnit + ')';
+            var isEN = localStorage.getItem('em-lang') === 'en';
+            var cols = [
+                { sort: 'poe_available', cs: 'PoE Budget',   en: 'PoE Budget' },
+                { sort: 'poe_used',      cs: 'PoE Spotřeba', en: 'PoE Consumption' },
+                { sort: 'poe_remaining', cs: 'PoE Zbývá',    en: 'PoE Remaining' }
+            ];
+            cols.forEach(function(c) {
+                var el = document.querySelector('th[data-sort="' + c.sort + '"]');
+                if (el) el.textContent = (isEN ? c.en : c.cs) + u;
+            });
         }
 
         function loadDevices() {
@@ -545,6 +561,7 @@
                 .then(function(r) { return r.json(); })
                 .then(function(s) {
                     _emSettings = s;
+                    _poeUnit   = s.poe_unit || 'W';
                     _sep       = s.name_separator || '-';
                     try { _nameFields = JSON.parse(s.name_fields || '[]'); } catch(e) { _nameFields = []; }
                     _showType  = (s.show_type_filter  !== '0');
@@ -553,6 +570,7 @@
                     _nameFields.forEach(function(f) { filterState['nf_' + f.pos] = ''; });
                     if (_showType)  filterState.type  = '';
                     if (_showModel) filterState.model = '';
+                    updatePoEHeaders();
                     loadDevices();
                 })
                 .catch(function() {
@@ -787,13 +805,14 @@
 
         // Called by emI18n when EN translations are loaded
         function onTranslationReady() {
-            // Rebuild filter options with translated "ALL" label
             if (allDevices.length > 0) buildFilterOptions();
+            updatePoEHeaders();
         }
 
         // Rebuild filters when language switches (ALL↔Všechny)
         window.onLangChange = function(lang) {
             if (allDevices.length > 0) buildFilterOptions();
+            updatePoEHeaders();
         };
 
         loadSettings();
@@ -819,12 +838,14 @@
         function exportIdxCSV() {
             document.getElementById('exportWrapIdx').classList.remove('open');
             if (!filteredDevices || !filteredDevices.length) { alert('Nejsou data.'); return; }
-            var czH=['IP adresa','Zařízení','Model','SN','Status','Porty','PoE porty','PoE Budget (W)','PoE Spotřeba (W)','PoE Zbývá (W)','PoE Využití (%)'];
+            var _u=' ('+_poeUnit+')';
+            var czH=['IP adresa','Zařízení','Model','SN','Status','Porty','PoE porty','PoE Budget'+_u,'PoE Spotřeba'+_u,'PoE Zbývá'+_u,'PoE Využití (%)'];
             var enK=['col.ip','col.device','col.model','col.sn','col.status','col.ports','col.poe_ports','col.poe_budget','col.poe_usage','col.poe_remaining','col.poe_util'];
             var hdr=enK.map(function(k,i){return emI18n.t(k)||czH[i];});
             var rows=[hdr];
             filteredDevices.forEach(function(d) {
-                rows.push([d.device_ip,d.device_name,d.device_model||'',d.device_serial||'',d.status,d.total_ports||0,d.port_count||0,d.poe_available||0,d.poe_used||0,d.poe_remaining||0,(d.poe_percentage||0).toFixed(2)]);
+                var _cv=function(w){return _poeUnit==='kW'?((w||0)/1000).toFixed(2):(w||0);};
+                rows.push([d.device_ip,d.device_name,d.device_model||'',d.device_serial||'',d.status,d.total_ports||0,d.port_count||0,_cv(d.poe_available),_cv(d.poe_used),_cv(d.poe_remaining),(d.poe_percentage||0).toFixed(2)]);
             });
             var csv = rows.map(function(r){ return r.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(','); }).join('\r\n');
             var blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});

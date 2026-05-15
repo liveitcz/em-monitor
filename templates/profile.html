@@ -22,19 +22,21 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .header-title h1 { color: #333; font-size: 26px; margin: 0; }
         .header-title .subtitle { color: #6b7280; font-size: 14px; margin-top: 2px; }
+
+        .header-right { display: flex; align-items: center; gap: 14px; }
+        .lang-switcher { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; }
+        .lang-btn { cursor: pointer; padding: 3px 9px; border: 1.5px solid #d1d5db; border-radius: 5px; background: white; font-size: 13px; font-weight: 600; color: #6b7280; transition: all 0.15s; }
+        .lang-btn:hover { border-color: #667eea; color: #4f46e5; }
+        .lang-btn-active { border-color: #667eea; color: #4f46e5; background: #f0f0ff; }
+        .lang-sep { color: #d1d5db; padding: 0 2px; }
         .back-link { color: #667eea; text-decoration: none; font-weight: 600; font-size: 14px; }
         .back-link:hover { text-decoration: underline; }
-        .home-link {
-            display: inline-flex; align-items: center; gap: 6px;
-            color: #667eea; text-decoration: none; font-weight: 700; font-size: 13px;
-            background: #f0f0ff; padding: 6px 12px; border-radius: 6px;
-            border: 1.5px solid #c7d2fe; white-space: nowrap; transition: background 0.15s;
-        }
-        .home-link:hover { background: #e0e7ff; }
-
         .two-col {
             display: grid;
             grid-template-columns: 1fr 1.6fr;
@@ -67,32 +69,19 @@
         .alert { padding: 11px 14px; border-radius: 6px; margin-top: 14px; font-size: 14px; display: none; }
         .alert-success { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
         .alert-error   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
-    
-        /* Lang switcher */
-        .em-lang-switch { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: #6b7280; user-select: none; }
-        .em-lang-btn { cursor: pointer; padding: 2px 8px; border-radius: 4px; transition: all 0.15s; font-weight: 600; }
-        .em-lang-btn:hover { background: #f3f4f6; color: #4f46e5; }
-        .em-lang-sep { opacity: 0.35; margin: 0 1px; }
-</style>
+    </style>
     <script src="{{ url_for('static', filename='js/i18n.js') }}" defer></script>
+    <script>window.emI18n = window.aааI18n || {setLang: function(l){}, getLang: function(){return 'cs';}};</script>
 </head>
 <body>
 <div class="container">
-    <div class="header" style="display:flex;justify-content:space-between;align-items:center;">
-        <div style="display:flex;align-items:center;gap:16px;">
-            <a href="/" class="home-link" data-i18n="common.home">🏠 DOMŮ</a>
-            <div class="header-title">
-                <h1>👤 Můj profil &mdash; {{ current_user }}</h1>
-                <div class="subtitle" data-i18n="profile.subtitle">Správa vašeho účtu</div>
-            </div>
+    <div class="header">
+        <div class="header-title">
+            <h1>👤 <span data-i18n="profile.title">Můj profil</span> &mdash; {{ current_user }}</h1>
+            <div class="subtitle" data-i18n="profile.subtitle">Spr&#225;va va&#353;eho &#250;&#269;tu</div>
         </div>
-        <div style="display:flex;align-items:center;gap:12px;">
-            <span class="em-lang-switch">
-                <span class="em-lang-btn" id="em-lang-cs" onclick="window.emI18n && window.emI18n.setLang('cs')">CZ</span>
-                <span class="em-lang-sep">|</span>
-                <span class="em-lang-btn" id="em-lang-en" onclick="window.emI18n && window.emI18n.setLang('en')">EN</span>
-            </span>
-            {% if is_admin %}<a href="/settings" class="back-link" style="font-size:13px;">⚙️ <span data-i18n="nav.settings">Nastavení</span></a>{% endif %}
+        <div class="header-right">
+            <a href="/" class="back-link" data-i18n="profile.back_overview">&larr; Zp&#283;t na p&#345;ehled</a>
         </div>
     </div>
     <div class="two-col">
@@ -111,24 +100,23 @@
                 </div>
                 <div class="info-row">
                     <span class="info-label" data-i18n="common.full_name">Cel&#233; jm&#233;no</span>
-                    <span class="info-value">{{ user.full_name or 'nevyplněno' }}</span>
+                    <span class="info-value">{{ user.full_name or '-' }}</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label" data-i18n="common.email">E-mail</span>
-                    <span class="info-value">{{ user.email or 'nevyplněno' }}</span>
+                    <span class="info-value">{{ user.email or '-' }}</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label" data-i18n="common.created_at">&#218;&#269;et vytvo&#345;en</span>
-                    <span class="info-value">{{ user.created_at | format_date_cz if user.created_at else 'nevyplněno' }}</span>
+                    <span class="info-value">{{ user.created_at | format_date_cz if user.created_at else '-' }}</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label" data-i18n="common.last_login">Posledn&#237; p&#345;ihl&#225;&#353;en&#237;</span>
-                    <span class="info-value">{{ user.last_login | format_date_cz if user.last_login else 'nevyplněno' }}</span>
+                    <span class="info-value">{{ user.last_login | format_date_cz if user.last_login else '-' }}</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label" data-i18n="common.account_status">Stav &#250;&#269;tu</span>
-                    <span class="info-value" style="color:{% if user.is_active %}#059669{% else %}#dc2626{% endif %}"
-                          data-i18n="{% if user.is_active %}profile.status_active{% else %}profile.status_inactive{% endif %}">
+                    <span class="info-value" style="color:{% if user.is_active %}#059669{% else %}#dc2626{% endif %}">
                         {% if user.is_active %}✅ Aktivní{% else %}🚫 Deaktivovaný{% endif %}
                     </span>
                 </div>
@@ -145,7 +133,7 @@
                     <label for="email" data-i18n="common.email">E-mail</label>
                     <input type="email" id="email" value="{{ user.email or '' }}" placeholder="vas@email.cz">
                 </div>
-                <button class="btn btn-primary" onclick="saveProfile()" data-i18n="common.save_changes">💾 Uložit změny</button>
+                <div style="text-align:right;margin-top:8px;"><button class="btn btn-primary" onclick="saveProfile()" data-i18n="common.save_changes">💾 Uložit změny</button></div>
                 <div class="alert" id="profileAlert"></div>
             </div>
             <div class="card">
@@ -162,7 +150,7 @@
                     <label for="newPwd2" data-i18n="profile.label_new_pwd2">Nov&#233; heslo znovu</label>
                     <input type="password" id="newPwd2" data-i18n-placeholder="profile.placeholder_new_pwd2" placeholder="Zopakujte nov&#233; heslo">
                 </div>
-                <button class="btn btn-primary" onclick="changePassword()" data-i18n="profile.change_pwd_btn">🔒 Změnit heslo</button>
+                <div style="text-align:right;margin-top:8px;"><button class="btn btn-primary" onclick="changePassword()" data-i18n="profile.change_pwd_btn">🔒 Změnit heslo</button></div>
                 <div class="alert" id="pwdAlert"></div>
             </div>
         </div>

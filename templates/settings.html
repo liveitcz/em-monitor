@@ -106,13 +106,23 @@
         .btn-rm { padding: 5px 10px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 5px; font-size: 12px; cursor: pointer; }
         .btn-rm:hover { background: #fee2e2; }
 
-        .save-bar { background: white; border-radius: 10px; padding: 16px 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 16px; margin-top: 4px; }
+        .save-bar { background: white; border-radius: 10px; padding: 16px 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 16px; margin-top: 4px; justify-content: flex-end; }
         .btn-save { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 11px 30px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
         .btn-save:hover { opacity: 0.9; transform: translateY(-1px); }
         .btn-save:disabled { opacity: 0.6; cursor: default; transform: none; }
         .save-ok  { color: #059669; font-weight: 600; font-size: 14px; }
         .save-err { color: #dc2626; font-weight: 600; font-size: 14px; }
         .datetime-preview { font-size: 13px; color: #4f46e5; font-weight: 600; padding: 6px 12px; background: #ede9fe; border-radius: 6px; white-space: nowrap; }
+
+        .unit-opt {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 10px 22px; border: 2px solid #e5e7eb; border-radius: 8px;
+            cursor: pointer; transition: all 0.15s; user-select: none;
+            font-size: 15px; font-weight: 700; min-width: 60px; justify-content: center;
+        }
+        .unit-opt:hover { border-color: #667eea; background: #f5f3ff; }
+        .unit-opt.active { border-color: #667eea; background: #ede9fe; color: #4f46e5; }
+        .unit-opt input[type="radio"] { display: none; }
     </style>
     <script src="{{ url_for('static', filename='js/i18n.js') }}" defer></script>
 </head>
@@ -139,14 +149,15 @@
 
         <!-- SIDEBAR -->
         <div class="sidebar">
-            <div class="sidebar-item active" onclick="showPanel('lang')" id="nav-lang">
+            <div class="sidebar-item active" onclick="showPanel('units')" id="nav-units">
+                <span class="sidebar-icon">⚡</span>
+                <span data-i18n="settings.nav_units">Jednotky a čas</span>
+            </div>
+            <div class="sidebar-item" onclick="showPanel('lang')" id="nav-lang">
                 <span class="sidebar-icon">🌍</span>
                 <span data-i18n="settings.nav_lang">Jazyk</span>
             </div>
-            <div class="sidebar-item" onclick="showPanel('time')" id="nav-time">
-                <span class="sidebar-icon">🕐</span>
-                <span data-i18n="settings.nav_time">Časové pásmo</span>
-            </div>
+            
             <div class="sidebar-item" onclick="showPanel('naming')" id="nav-naming">
                 <span class="sidebar-icon">🏷️</span>
                 <span data-i18n="settings.nav_naming">Filtry zařízení</span>
@@ -160,25 +171,36 @@
         <div class="content-area">
 
             <!-- PANEL: Language -->
-            <div class="panel active" id="panel-lang">
-                <div class="panel-title" data-i18n="settings.lang_title">Jazyk</div>
-                <div class="form-row">
-                    <span class="form-label" data-i18n="settings.lang_label">Výchozí jazyk</span>
-                    <div class="lang-options">
-                        <div class="lang-opt" id="opt-cs" onclick="selectLang('cs')">
-                            <strong style="font-size:13px;letter-spacing:1px;">CZ</strong> <span data-i18n="settings.lang_cs">Čeština</span>
-                        </div>
-                        <div class="lang-opt" id="opt-en" onclick="selectLang('en')">
-                            <strong style="font-size:13px;letter-spacing:1px;">EN</strong> <span data-i18n="settings.lang_en">Angličtina</span>
-                        </div>
+<div class="panel active" id="panel-units">
+                <div class="panel-title" data-i18n="settings.units_title">Jednotky a čas</div>
+
+
+                <div class="form-row" style="margin-bottom:12px;">
+                    <span class="form-label" data-i18n="settings.units_poe_label">Zobrazení PoE hodnot u zařízení na hlavní stránce</span>
+                    <div style="display:flex;gap:10px;">
+                        <label class="unit-opt" id="opt-unit-w"  onclick="selectUnit('main','W')">
+                            <input type="radio" name="poe_unit" value="W"> W
+                        </label>
+                        <label class="unit-opt" id="opt-unit-kw" onclick="selectUnit('main','kW')">
+                            <input type="radio" name="poe_unit" value="kW"> kW
+                        </label>
                     </div>
                 </div>
-                <div class="form-note" data-i18n="settings.lang_note">Výchozí jazyk pro všechny uživatele při přihlášení</div>
-            </div>
 
-            <!-- PANEL: Timezone -->
-            <div class="panel" id="panel-time">
-                <div class="panel-title" data-i18n="settings.time_title">Časové pásmo a formát data</div>
+                <div class="form-row" style="margin-bottom:20px;">
+                    <span class="form-label" data-i18n="settings.units_detail_label">Zobrazení PoE hodnot v detailu aktivního prvku</span>
+                    <div style="display:flex;gap:10px;">
+                        <label class="unit-opt" id="opt-dunit-w"  onclick="selectUnit('detail','W')">
+                            <input type="radio" name="poe_detail_unit" value="W"> W
+                        </label>
+                        <label class="unit-opt" id="opt-dunit-kw" onclick="selectUnit('detail','kW')">
+                            <input type="radio" name="poe_detail_unit" value="kW"> kW
+                        </label>
+                    </div>
+                </div>
+                <div class="form-note" style="color:#4f46e5;" style="margin-bottom:24px;" data-i18n="settings.units_poe_note">Ovlivňuje sloupce PoE Budget, PoE Spotřeba a PoE Zbývá</div>
+
+
                 <div class="form-row">
                     <span class="form-label" data-i18n="settings.tz_label">Časové pásmo</span>
                     <select id="setting-timezone">
@@ -196,13 +218,33 @@
                     <input type="text" id="setting-datetime-format" style="width:180px" oninput="updateDatePreview()">
                     <span class="datetime-preview" id="datetime-preview">—</span>
                 </div>
-                <div class="form-note" data-i18n="settings.fmt_note">Kódy: %d=den %m=měsíc %Y=rok %H=hodina %M=minuta</div>
+                <div class="form-note" style="color:#4f46e5;" data-i18n="settings.fmt_note">Kódy: %d=den %m=měsíc %Y=rok %H=hodina %M=minuta
             </div>
+            </div>
+
+
+                <div class="panel" id="panel-lang">
+                <div class="panel-title" data-i18n="settings.lang_title">Jazyk</div>
+                <div class="form-row">
+                    <span class="form-label" data-i18n="settings.lang_label">Výchozí jazyk</span>
+                    <div class="lang-options">
+                <div class="lang-opt" id="opt-cs" onclick="selectLang('cs')">
+                    <strong style="font-size:13px;letter-spacing:1px;">CZ</strong> <span data-i18n="settings.lang_cs">Čeština</span>
+                </div>
+                <div class="lang-opt" id="opt-en" onclick="selectLang('en')">
+                    <strong style="font-size:13px;letter-spacing:1px;">EN</strong> <span data-i18n="settings.lang_en">Angličtina</span>
+                </div>
+                    </div>
+                </div>
+                <div class="form-note" style="color:#4f46e5;" data-i18n="settings.lang_note">Výchozí jazyk pro všechny uživatele při přihlášení</div>
+            </div>
+
+            <!-- PANEL: Timezone -->
 
             <!-- PANEL: Device name filters -->
             <div class="panel" id="panel-naming">
                 <div class="panel-title" data-i18n="settings.naming_title">Filtry názvů zařízení</div>
-                <p class="form-note" style="margin-bottom:12px;" data-i18n="settings.naming_note">
+                <p class="form-note" style="color:#4f46e5;" style="margin-bottom:12px;" data-i18n="settings.naming_note">
                     Definujte jak se název zařízení rozkládá na filtrovací kategorie.
                 </p>
                 <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#0369a1;line-height:1.7;">
@@ -216,20 +258,20 @@
                 <div class="form-row">
                     <span class="form-label" data-i18n="settings.naming_sep">Oddělovač</span>
                     <input type="text" id="setting-sep" style="width:120px;text-align:center"
-                           oninput="updateNamingPreview()" placeholder="-">
+                   oninput="updateNamingPreview()" placeholder="-">
                     <span style="font-size:13px;color:#9ca3af;">
-                        <span data-i18n="settings.naming_example">Příklad</span>:
-                        <strong id="nameExample" style="color:#4f46e5">DEK-SW1-DR01</strong>
+                <span data-i18n="settings.naming_example">Příklad</span>:
+                <strong id="nameExample" style="color:#4f46e5">DEK-SW1-DR01</strong>
                     </span>
                 </div>
                 <table class="naming-table">
                     <thead>
-                        <tr>
-                            <th style="width:90px" data-i18n="settings.naming_col_pos">Pozice</th>
-                            <th data-i18n="settings.naming_col_cs">Popis (CZ)</th>
-                            <th data-i18n="settings.naming_col_en">Popis (EN)</th>
-                            <th style="width:50px" data-i18n="settings.naming_col_del">Smaž</th>
-                        </tr>
+                <tr>
+                    <th style="width:90px" data-i18n="settings.naming_col_pos">Pozice</th>
+                    <th data-i18n="settings.naming_col_cs">Popis (CZ)</th>
+                    <th data-i18n="settings.naming_col_en">Popis (EN)</th>
+                    <th style="width:50px" data-i18n="settings.naming_col_del">Smaž</th>
+                </tr>
                     </thead>
                     <tbody id="namingBody"></tbody>
                 </table>
@@ -238,14 +280,14 @@
                     <div class="preview-label" data-i18n="settings.naming_preview">Náhled filtrů:</div>
                     <div class="preview-filters" id="previewFilters"></div>
                     <div style="display:flex;flex-wrap:wrap;">
-                        <label class="toggle-row">
-                            <input type="checkbox" id="show-type" onchange="updateNamingPreview()">
-                            <span style="font-size:13px;" data-i18n="settings.naming_type">Filtr Typ (z modelu)</span>
-                        </label>
-                        <label class="toggle-row">
-                            <input type="checkbox" id="show-model" onchange="updateNamingPreview()">
-                            <span style="font-size:13px;" data-i18n="settings.naming_model">Filtr Model</span>
-                        </label>
+                <label class="toggle-row">
+                    <input type="checkbox" id="show-type" onchange="updateNamingPreview()">
+                    <span style="font-size:13px;" data-i18n="settings.naming_type">Filtr Typ (z modelu)</span>
+                </label>
+                <label class="toggle-row">
+                    <input type="checkbox" id="show-model" onchange="updateNamingPreview()">
+                    <span style="font-size:13px;" data-i18n="settings.naming_model">Filtr Model</span>
+                </label>
                     </div>
                 </div>
             </div>
@@ -255,27 +297,27 @@
                 <div class="panel-title" data-i18n="settings.backup_title">Záloha</div>
                 <div class="backup-grid">
                     <div class="backup-option">
-                        <div class="backup-option-title" data-i18n="settings.backup_core_title">CORE</div>
-                        <div class="backup-option-desc" data-i18n="settings.backup_core_desc">
-                            Pouze konfigurační soubory (devices.json, snmp.json). Bez databáze.
-                        </div>
-                        <button class="btn-backup btn-backup-core" id="btn-backup-core"
-                                onclick="createBackup('core')" data-i18n="settings.backup_core_btn">
-                            Vytvořit CORE zálohu
-                        </button>
+                <div class="backup-option-title" data-i18n="settings.backup_core_title">CORE</div>
+                <div class="backup-option-desc" data-i18n="settings.backup_core_desc">
+                    Pouze konfigurační soubory (devices.json, snmp.json). Bez databáze.
+                </div>
+                <button class="btn-backup btn-backup-core" id="btn-backup-core"
+                        onclick="createBackup('core')" data-i18n="settings.backup_core_btn">
+                    Vytvořit CORE zálohu
+                </button>
                     </div>
                     <div class="backup-option">
-                        <div class="backup-option-title" data-i18n="settings.backup_cred_title">S přihlašovacími údaji</div>
-                        <div class="backup-option-desc" data-i18n="settings.backup_cred_desc">
-                            CORE + SQL export uživatelů a hashů hesel.
-                        </div>
-                        <button class="btn-backup btn-backup-cred" id="btn-backup-cred"
-                                onclick="createBackup('credentials')" data-i18n="settings.backup_cred_btn">
-                            Vytvořit zálohu s credentials
-                        </button>
-                        <div class="restore-note" data-i18n="settings.backup_restore_note">
-                            Obnova: sqlite3 /app/data/energy.db &lt; users_backup.sql
-                        </div>
+                <div class="backup-option-title" data-i18n="settings.backup_cred_title">S přihlašovacími údaji</div>
+                <div class="backup-option-desc" data-i18n="settings.backup_cred_desc">
+                    CORE + SQL export uživatelů a hashů hesel.
+                </div>
+                <button class="btn-backup btn-backup-cred" id="btn-backup-cred"
+                        onclick="createBackup('credentials')" data-i18n="settings.backup_cred_btn">
+                    Vytvořit zálohu s credentials
+                </button>
+                <div class="restore-note" data-i18n="settings.backup_restore_note">
+                    Obnova: sqlite3 /app/data/energy.db &lt; users_backup.sql
+                </div>
                     </div>
                 </div>
                 <div class="backup-list-title" data-i18n="settings.backup_existing">Existující zálohy</div>
@@ -296,6 +338,8 @@
 
 <script>
 var _currentLang = 'cs';
+var _poeUnit = 'W';
+var _poeDetailUnit = 'W';
 
 function showPanel(id) {
     document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
@@ -312,6 +356,8 @@ fetch('/api/settings')
 function applySettings(s) {
     _currentLang = s.lang || 'cs';
     selectLang(_currentLang, false);
+    _poeUnit = s.poe_unit || 'W'; selectUnit('main', _poeUnit);
+    _poeDetailUnit = s.poe_detail_unit || 'W'; selectUnit('detail', _poeDetailUnit);
     var tz = document.getElementById('setting-timezone');
     if (tz) tz.value = s.timezone || 'Europe/Prague';
     var fmt = document.getElementById('setting-datetime-format');
@@ -324,6 +370,22 @@ function applySettings(s) {
     document.getElementById('show-type').checked  = (s.show_type_filter  !== '0');
     document.getElementById('show-model').checked = (s.show_model_filter !== '0');
     updateNamingPreview();
+}
+
+function selectUnit(scope, unit) {
+    if (scope === 'main') {
+        _poeUnit = unit;
+        ['opt-unit-w','opt-unit-kw'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.classList.toggle('active', el.querySelector('input').value === unit);
+        });
+    } else {
+        _poeDetailUnit = unit;
+        ['opt-dunit-w','opt-dunit-kw'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.classList.toggle('active', el.querySelector('input').value === unit);
+        });
+    }
 }
 
 function selectLang(lang, updateEngine) {
@@ -417,6 +479,8 @@ function saveSettings() {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({
             lang: _currentLang,
+            poe_unit: _poeUnit,
+            poe_detail_unit: _poeDetailUnit,
             timezone: document.getElementById('setting-timezone').value,
             datetime_format: document.getElementById('setting-datetime-format').value,
             name_separator: document.getElementById('setting-sep').value,

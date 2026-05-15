@@ -27,14 +27,6 @@
         .header h1 { color: #333; font-size: 24px; }
         .back-link { color: #667eea; text-decoration: none; font-weight: 600; }
         .back-link:hover { text-decoration: underline; }
-        .home-link {
-            display: inline-flex; align-items: center; gap: 6px;
-            color: #667eea; text-decoration: none; font-weight: 700; font-size: 13px;
-            background: #f0f0ff; padding: 6px 12px; border-radius: 6px;
-            border: 1.5px solid #c7d2fe; white-space: nowrap; transition: background 0.15s;
-        }
-        .home-link:hover { background: #e0e7ff; }
-
 
         .two-col { display: grid; grid-template-columns: 1fr 1.6fr; gap: 24px; }
 
@@ -152,31 +144,16 @@
         }
         .modal h3 { color: #374151; margin-bottom: 18px; font-size: 17px; }
         .modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
-    
-        /* Lang switcher */
-        .em-lang-switch { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: #6b7280; user-select: none; }
-        .em-lang-btn { cursor: pointer; padding: 2px 8px; border-radius: 4px; transition: all 0.15s; font-weight: 600; }
-        .em-lang-btn:hover { background: #f3f4f6; color: #4f46e5; }
-        .em-lang-sep { opacity: 0.35; margin: 0 1px; }
-</style>
+    </style>
     <script src="{{ url_for('static', filename='js/i18n.js') }}" defer></script>
+    <script>window.emI18n = window.aааI18n || {setLang: function(l){}, getLang: function(){return 'cs';}};</script>
 </head>
 <body>
 <div class="container">
 
-    <div class="header" style="display:flex;justify-content:space-between;align-items:center;">
-        <div style="display:flex;align-items:center;gap:16px;">
-            <a href="/" class="home-link" data-i18n="common.home">🏠 DOMŮ</a>
-            <h1 data-i18n="user_mgmt.title">👥 Správa uživatelů</h1>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;">
-            <span class="em-lang-switch">
-                <span class="em-lang-btn" id="em-lang-cs" onclick="window.emI18n && window.emI18n.setLang('cs')">CZ</span>
-                <span class="em-lang-sep">|</span>
-                <span class="em-lang-btn" id="em-lang-en" onclick="window.emI18n && window.emI18n.setLang('en')">EN</span>
-            </span>
-            {% if is_admin %}<a href="/settings" class="back-link" style="font-size:13px;">⚙️ <span data-i18n="nav.settings">Nastavení</span></a>{% endif %}
-        </div>
+    <div class="header">
+        <h1 data-i18n="user_mgmt.title">👥 Správa uživatelů</h1>
+                <a href="/" class="back-link" data-i18n="user_mgmt.back_overview">← Zpět na přehled</a>
     </div>
 
     <div class="two-col">
@@ -195,19 +172,19 @@
             <div class="form-group">
                 <label data-i18n="user_mgmt.label_role">Role</label>
                 <select id="addRole">
-                    <option value="operator" id="opt-add-op">👤 Operátor</option>
+                    <option value="operator">👤 Operátor</option>
                     <option value="admin">🔑 Admin</option>
                 </select>
             </div>
             <div class="form-group">
                 <label data-i18n="user_mgmt.label_fullname">Celé jméno</label>
-                <input type="text" id="addFullName" placeholder="">
+                <input type="text" id="addFullName" placeholder="Jan Novák">
             </div>
             <div class="form-group">
                 <label data-i18n="user_mgmt.label_email">E-mail</label>
-                <input type="email" id="addEmail" placeholder="">
+                <input type="email" id="addEmail" placeholder="jan@firma.cz">
             </div>
-            <button class="btn btn-primary" onclick="addUser()" data-i18n="user_mgmt.add_btn">➕ Přidat uživatele</button>
+            <div style="text-align:right;margin-top:8px;"><button class="btn btn-primary" onclick="addUser()" data-i18n="user_mgmt.add_btn">➕ Přidat uživatele</button></div>
             <div class="alert" id="addAlert"></div>
         </div>
 
@@ -230,7 +207,7 @@
         <div class="form-group">
             <label data-i18n="user_mgmt.label_role">Role</label>
             <select id="editRole">
-                <option value="operator" id="opt-edit-op">👤 Operátor</option>
+                <option value="operator">👤 Operátor</option>
                 <option value="admin">🔑 Admin</option>
             </select>
         </div>
@@ -255,8 +232,10 @@
         </div>
         <div class="alert" id="editAlert"></div>
         <div class="modal-actions">
-            <button class="btn btn-secondary" onclick="closeModal()" data-i18n="user_mgmt.cancel_btn">Zrušit</button>
-            <button class="btn btn-primary" onclick="saveEdit()" data-i18n="user_mgmt.save_btn">💾 Uložit</button>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
+                <button class="btn btn-secondary" onclick="closeModal()" data-i18n="user_mgmt.cancel_btn">Zrušit</button>
+                <button class="btn btn-primary" onclick="saveEdit()" data-i18n="user_mgmt.save_btn">💾 Uložit</button>
+            </div>
         </div>
     </div>
 </div>
@@ -280,23 +259,14 @@
                     return;
                 }
                 var html = '<table class="users-table"><thead><tr>' +
-                    (localStorage.getItem('em-lang')==='en' ? '<th>User</th><th>Role</th><th>Status</th><th>Last login</th><th>Actions</th>' : '<th>Uživatel</th><th>Role</th><th>Stav</th><th>Poslední login</th><th>Akce</th>') +
+                    '<th>Uživatel</th><th>Role</th><th>Stav</th><th>Poslední login</th><th>Akce</th>' +
                     '</tr></thead><tbody>';
                 users.forEach(function(u) {
                     var roleClass = u.role === 'admin' ? 'role-admin' : 'role-operator';
-                    var roleLabel = u.role === 'admin' ? '🔑 Admin' : (_en ? '👤 Operator' : '👤 Operátor');
+                    var roleLabel = u.role === 'admin' ? '🔑 Admin' : '👤 Operátor';
                     var statusClass = u.is_active ? 'status-active' : 'status-inactive';
-                    var _en = localStorage.getItem('em-lang') === 'en';
-                    var statusLabel = u.is_active ? (_en ? '✅ Active' : '✅ Aktivní') : (_en ? '🚫 Inactive' : '🚫 Neaktivní');
-                    var lastLogin = '-';
-                    if (u.last_login) {
-                        var _d = u.last_login.replace('T',' ');
-                        var _parts = _d.substring(0,16).split(/[\- :]/);
-                        // parts: [YYYY, MM, DD, HH, MM]
-                        if (_parts.length >= 5) {
-                            lastLogin = _parts[2]+'-'+_parts[1]+'-'+_parts[0].substring(2)+' '+_parts[3]+':'+_parts[4];
-                        } else { lastLogin = _d.substring(0,16); }
-                    }
+                    var statusLabel = u.is_active ? '✅ Aktivní' : '🚫 Neaktivní';
+                    var lastLogin = u.last_login ? u.last_login.replace('T', ' ').substring(0,16) : '-';
                     html += '<tr>' +
                         '<td><strong>' + u.username + '</strong>' + (u.full_name ? '<br><small style="color:#6b7280">' + u.full_name + '</small>' : '') + '</td>' +
                         '<td><span class="role-badge ' + roleClass + '">' + roleLabel + '</span></td>' +
@@ -411,17 +381,6 @@
     document.getElementById('editModal').addEventListener('click', function(e) {
         if (e.target === this) closeModal();
     });
-
-    /* ── Lang change hook ── */
-    window.onLangChange = function(lang) {
-        var opText = (lang === 'en') ? '👤 Operator' : '👤 Operátor';
-        ['opt-add-op', 'opt-edit-op'].forEach(function(id) {
-            var el = document.getElementById(id);
-            if (el) el.textContent = opText;
-        });
-        // Rebuild users list with new lang
-        loadUsers();
-    };
 
     loadUsers();
 </script>
