@@ -144,8 +144,10 @@ def sort_devices_by_ip(devices_dict):
 
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA journal_mode=WAL')
+    conn.execute('PRAGMA busy_timeout=30000')
     return conn
 
 
@@ -1410,8 +1412,8 @@ def api_settings_save():
     if session.get('role') != 'admin':
         return jsonify({'success': False, 'error': 'Admin required'}), 403
     data = request.get_json() or {}
-    allowed = {'lang', 'timezone', 'datetime_format', 'name_separator',
-               'name_fields', 'show_type_filter', 'show_model_filter'}
+    allowed = {'lang', 'poe_unit', 'poe_detail_unit', 'timezone', 'datetime_format',
+               'name_separator', 'name_fields', 'show_type_filter', 'show_model_filter'}
     pairs = []
     for key, val in data.items():
         if key in allowed:
@@ -1419,9 +1421,10 @@ def api_settings_save():
             pairs.append((key, v))
     if not pairs:
         return jsonify({'success': True, 'saved': []})
-    # Single connection, single transaction — much faster on NAS/slow storage
     try:
-        conn = sqlite3.connect(DB_PATH, timeout=10.0)
+        conn = sqlite3.connect(DB_PATH, timeout=30.0)
+        conn.execute('PRAGMA journal_mode=WAL')
+        conn.execute('PRAGMA busy_timeout=30000')
         conn.execute('PRAGMA synchronous=NORMAL')
         cursor = conn.cursor()
         cursor.executemany(
