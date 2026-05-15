@@ -160,7 +160,8 @@
     "placeholder_new_pwd2": "Repeat the new password",
     "change_pwd_btn": "🔒 Change password",
     "status_active": "✅ Active",
-    "status_inactive": "🚫 Deactivated"
+    "status_inactive": "🚫 Deactivated",
+    "title": "My profile"
   },
   "user_mgmt": {
     "title": "👥 User management",
@@ -201,7 +202,6 @@
     "lang_cs": "Czech",
     "lang_en": "English",
     "lang_note": "Default language for all users at login",
-    "time_title": "🕐 Timezone & date format",
     "tz_label": "Timezone",
     "fmt_label": "Date & time format",
     "fmt_note": "Format codes: %d=day %m=month %Y=year %H=hour %M=minute",
@@ -241,6 +241,12 @@
     "naming_help_example": "Example: switch <code style=\"background:#e0f2fe;padding:1px 5px;border-radius:3px;\">NR-SW-1-MBT</code> with separator <code style=\"background:#e0f2fe;padding:1px 5px;border-radius:3px;\">-</code>",
     "naming_help_result": "→ Pos 1 = <strong>NR</strong> &nbsp;|&nbsp; Pos 2 = <strong>SW</strong> &nbsp;|&nbsp; Pos 3 = <strong>1</strong> &nbsp;|&nbsp; Pos -1 = <strong>MBT</strong>",
     "naming_help_tip": "Name position 1 as &ldquo;Area&rdquo; and -1 as &ldquo;Rack&rdquo;, and those filters appear on the main page.",
-    "naming_help_note": "⚠️ After saving, refresh the main page (F5)."
+    "naming_help_note": "⚠️ After saving, refresh the main page (F5).",
+    "nav_units": "Units & time",
+    "units_title": "Units & time",
+    "units_poe_label": "Display PoE values for devices on the main page in",
+    "units_detail_label": "Display PoE values in device detail in",
+    "units_poe_note": "Affects PoE Budget, PoE Consumption and PoE Remaining columns",
+    "time_subtitle": "Timezone & date format"
   }
 }
