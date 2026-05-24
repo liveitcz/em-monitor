@@ -108,7 +108,10 @@
     "toggle_view": "⇄ Change view",
     "col_device": "Device",
     "col_port": "Port",
-    "col_port_desc": "Port description"
+    "col_port_desc": "Port description",
+    "filter_down_ports": "Inactive ports",
+    "filter_active": "Active ports",
+    "filter_all_ports": "All ports"
   },
   "devedit": {
     "title": "⚡ Device management",
