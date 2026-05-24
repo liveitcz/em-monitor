@@ -129,6 +129,27 @@ def init_database():
             CREATE INDEX IF NOT EXISTS idx_vlan_device_ip 
             ON poe_vlan_names(device_ip)
         ''')
+
+        # Indexes for mac_vlans_data performance
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_mac_vlan_id
+            ON poe_mac_addresses(vlan_id)
+        ''')
+
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_mac_dev_ifidx_vlan
+            ON poe_mac_addresses(device_ip, ifIndex, vlan_id)
+        ''')
+
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_ports_vlan_id
+            ON poe_ports(port_vlan_id)
+        ''')
+
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_ports_status
+            ON poe_ports(port_status)
+        ''')
         
         # ================================================================
         # USERS TABLE

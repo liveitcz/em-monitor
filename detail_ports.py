@@ -148,7 +148,24 @@ def get_db():
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA journal_mode=WAL')
     conn.execute('PRAGMA busy_timeout=30000')
+    conn.execute('PRAGMA cache_size=-32000')    # 32 MB query cache
+    conn.execute('PRAGMA temp_store=MEMORY')
     return conn
+
+
+def ensure_mac_vlans_indexes(conn):
+    """Create performance indexes if they don't exist yet (idempotent)."""
+    idxs = [
+        "CREATE INDEX IF NOT EXISTS idx_mac_vlan_id ON poe_mac_addresses(vlan_id)",
+        "CREATE INDEX IF NOT EXISTS idx_mac_dev_ifidx_vlan ON poe_mac_addresses(device_ip, ifIndex, vlan_id)",
+        "CREATE INDEX IF NOT EXISTS idx_ports_vlan_id ON poe_ports(port_vlan_id)",
+        "CREATE INDEX IF NOT EXISTS idx_ports_status ON poe_ports(port_status)",
+    ]
+    for sql in idxs:
+        try:
+            conn.execute(sql)
+        except Exception:
+            pass
 
 
 # ================================================================
@@ -1228,9 +1245,12 @@ def api_mac_vlans_data():
     vlan_filter  = request.args.get('vlan', type=int)
     vlans_only   = request.args.get('vlans_only', type=int, default=0)
     all_vlans    = request.args.get('all', type=int, default=0)
+    include_down = request.args.get('include_down', type=int, default=0)
 
     try:
         conn = get_db()
+        ensure_mac_vlans_indexes(conn)   # create indexes on existing DBs
+        conn.execute('PRAGMA optimize')  # update query planner stats
         cursor = conn.cursor()
 
         # Always fetch VLANs + MAC counts (lightweight)
@@ -1243,39 +1263,17 @@ def api_mac_vlans_data():
         """)
         vlan_rows = cursor.fetchall()
 
-        # Access port definition:
-        #   1) Only 1 VLAN on the port (not a real inter-VLAN trunk)
-        #   2) Total MACs on the port <= 10 (not a high-density uplink)
-        # This matches existing Rule 1 in detail_ports: >5 MACs = trunk
-        # Count per VLAN using identical logic to detail query (prefer access port, dedup per MAC)
+        # Fast VLAN MAC count — only ACTIVE ports (port_status=1), matches "Aktivní porty" view
         cursor.execute("""
-            SELECT
-                m.mac_address,
-                m.vlan_id,
-                CASE WHEN p.port_vlan_id = m.vlan_id THEN 2
-                     WHEN p.port_vlan_id IS NOT NULL AND p.port_vlan_id != 0 THEN 1
-                     ELSE 0 END as is_access
+            SELECT m.vlan_id, COUNT(DISTINCT m.mac_address) as mac_count
             FROM poe_mac_addresses m
             INNER JOIN poe_ports p ON m.device_ip = p.device_ip AND m.ifIndex = p.ifIndex
             WHERE m.vlan_id NOT IN (1002, 1003, 1004, 1005)
               AND p.port_name NOT LIKE 'Po%'
-            GROUP BY m.device_ip, m.ifIndex
-            HAVING COUNT(DISTINCT m.vlan_id) = 1
-               AND COUNT(DISTINCT m.mac_address) <= 10
-            ORDER BY is_access DESC
+              AND p.port_status = 1
+            GROUP BY m.vlan_id
         """)
-        # Deduplicate per MAC (same as detail query) → count per VLAN
-        seen_count = {}
-        for row in cursor.fetchall():
-            mac_addr = row['mac_address']
-            vid = row['vlan_id']
-            if mac_addr not in seen_count:
-                seen_count[mac_addr] = vid
-            elif row['is_access'] == 1:
-                seen_count[mac_addr] = vid  # upgrade to access port VLAN
-        vlan_mac_counts = {}
-        for mac_addr, vid in seen_count.items():
-            vlan_mac_counts[vid] = vlan_mac_counts.get(vid, 0) + 1
+        vlan_mac_counts = {row['vlan_id']: row['mac_count'] for row in cursor.fetchall()}
 
         vlans = []
         for row in vlan_rows:
@@ -1295,29 +1293,59 @@ def api_mac_vlans_data():
 
         # all=1: load all MACs from all VLANs
         if all_vlans:
-            cursor.execute("""
-                SELECT
-                    m.mac_address, m.vlan_id, m.vlan_name,
-                    d.device_name, d.device_ip, p.port_name, p.port_description
-                FROM poe_mac_addresses m
-                INNER JOIN poe_ports p ON m.device_ip = p.device_ip AND m.ifIndex = p.ifIndex
-                LEFT JOIN poe_devices d ON m.device_ip = d.device_ip
-                WHERE m.vlan_id NOT IN (1002, 1003, 1004, 1005)
-                  AND p.port_name NOT LIKE 'Po%'
-                GROUP BY m.device_ip, m.ifIndex
-                HAVING COUNT(DISTINCT m.vlan_id) = 1
-                   AND COUNT(DISTINCT m.mac_address) <= 10
-                ORDER BY m.vlan_id, d.device_name, p.port_name, m.mac_address
-            """)
+            if include_down:
+                # All ports (UP+DOWN or DOWN only) across all VLANs via poe_ports
+                cursor.execute("""
+                    SELECT
+                        p.port_name, p.port_description,
+                        COALESCE(p.port_status, 2) AS port_status,
+                        p.port_vlan_id,
+                        d.device_name, d.device_ip,
+                        m.mac_address,
+                        COALESCE(m.vlan_id, p.port_vlan_id)   AS vlan_id,
+                        COALESCE(m.vlan_name, '')              AS vlan_name
+                    FROM poe_ports p
+                    LEFT JOIN poe_devices d ON p.device_ip = d.device_ip
+                    LEFT JOIN poe_mac_addresses m
+                        ON  p.device_ip = m.device_ip
+                        AND p.ifIndex   = m.ifIndex
+                        AND m.vlan_id   = p.port_vlan_id
+                    WHERE p.port_vlan_id NOT IN (1002, 1003, 1004, 1005)
+                      AND p.port_vlan_id IS NOT NULL
+                      AND p.port_vlan_id != 0
+                      AND p.port_name NOT LIKE 'Po%%'
+                      AND COALESCE(p.is_trunk, 0) = 0
+                    GROUP BY p.device_ip, p.ifIndex
+                    HAVING COUNT(DISTINCT m.mac_address) <= 10
+                    ORDER BY p.port_status ASC, vlan_id, d.device_name, p.port_name
+                """)
+            else:
+                cursor.execute("""
+                    SELECT
+                        m.mac_address, m.vlan_id, m.vlan_name,
+                        d.device_name, d.device_ip, p.port_name, p.port_description,
+                        COALESCE(p.port_status, 2) as port_status
+                    FROM poe_mac_addresses m
+                    INNER JOIN poe_ports p ON m.device_ip = p.device_ip AND m.ifIndex = p.ifIndex
+                    LEFT JOIN poe_devices d ON m.device_ip = d.device_ip
+                    WHERE m.vlan_id NOT IN (1002, 1003, 1004, 1005)
+                      AND p.port_name NOT LIKE 'Po%'
+                    GROUP BY m.device_ip, m.ifIndex
+                    HAVING COUNT(DISTINCT m.vlan_id) = 1
+                       AND COUNT(DISTINCT m.mac_address) <= 10
+                    ORDER BY m.vlan_id, d.device_name, p.port_name, m.mac_address
+                """)
             all_rows = cursor.fetchall()
             conn.close()
             macs = [{
-                'mac': row['mac_address'], 'vlan_id': row['vlan_id'],
-                'vlan_name': row['vlan_name'] or '',
-                'device_name': row['device_name'] or row['device_ip'] or '?',
-                'device_ip': row['device_ip'] or '',
-                'port_name': row['port_name'] or '?',
-                'port_description': row['port_description'] or ''
+                'mac':              row['mac_address'] or '-',
+                'vlan_id':          row['vlan_id'],
+                'vlan_name':        row['vlan_name'] or '',
+                'device_name':      row['device_name'] or row['device_ip'] or '?',
+                'device_ip':        row['device_ip'] or '',
+                'port_name':        row['port_name'] or '?',
+                'port_description': row['port_description'] or '',
+                'port_status':      row['port_status']
             } for row in all_rows]
             return jsonify({'vlans': vlans, 'macs': macs, 'total_macs': len(macs)})
 
@@ -1326,6 +1354,52 @@ def api_mac_vlans_data():
             conn.close()
             return jsonify({'vlans': vlans, 'macs': [], 'total_macs': 0,
                             'info': 'Select a VLAN to load MAC addresses'})
+
+        # include_down=1: query ALL ports (incl. DOWN) via poe_ports + LEFT JOIN macs
+        # DOWN ports have port_vlan_id set from last known scan even when down.
+        # We search both port_vlan_id = vlan AND any MAC learned on that VLAN.
+        if include_down:
+            # Query ALL ports configured on this VLAN (from poe_ports.port_vlan_id).
+            # LEFT JOIN macs only for this VLAN — one row per port via GROUP BY.
+            # HAVING <= 10 MACs excludes uplink/trunk ports that slipped through.
+            cursor.execute("""
+                SELECT
+                    p.port_name,
+                    p.port_description,
+                    COALESCE(p.port_status, 2)  AS port_status,
+                    p.port_vlan_id,
+                    d.device_name,
+                    d.device_ip,
+                    m.mac_address,
+                    COALESCE(m.vlan_id, p.port_vlan_id) AS vlan_id,
+                    COALESCE(m.vlan_name, '')            AS vlan_name
+                FROM poe_ports p
+                LEFT JOIN poe_devices d ON p.device_ip = d.device_ip
+                LEFT JOIN poe_mac_addresses m
+                    ON  p.device_ip = m.device_ip
+                    AND p.ifIndex   = m.ifIndex
+                    AND m.vlan_id   = ?
+                WHERE p.port_vlan_id = ?
+                  AND p.port_name NOT LIKE 'Po%%'
+                  AND COALESCE(p.is_trunk, 0) = 0
+                GROUP BY p.device_ip, p.ifIndex
+                HAVING COUNT(DISTINCT m.mac_address) <= 10
+                ORDER BY p.port_status ASC, d.device_name, p.port_name
+            """, (vlan_filter, vlan_filter))
+            down_rows = cursor.fetchall()
+            conn.close()
+            macs = [{
+                'mac':              row['mac_address'] or '-',
+                'vlan_id':          row['vlan_id'] or vlan_filter,
+                'vlan_name':        row['vlan_name'] or '',
+                'device_name':      row['device_name'] or row['device_ip'] or '?',
+                'device_ip':        row['device_ip'] or '',
+                'port_name':        row['port_name'] or '?',
+                'port_description': row['port_description'] or '',
+                'port_status':      row['port_status']
+            } for row in down_rows]
+            return jsonify({'vlans': vlans, 'macs': macs,
+                            'total_macs': len(macs), 'vlan_filter': vlan_filter})
 
         # Prefer: access port (port_vlan_id IS NOT NULL)
         # Fallback: AP trunk port (port_vlan_id NULL, 1 VLAN, ≤10 MAC)
@@ -1338,6 +1412,7 @@ def api_mac_vlans_data():
                 d.device_ip,
                 p.port_name,
                 p.port_description,
+                COALESCE(p.port_status, 2) as port_status,
                 CASE WHEN p.port_vlan_id = m.vlan_id THEN 2
                      WHEN p.port_vlan_id IS NOT NULL AND p.port_vlan_id != 0 THEN 1
                      ELSE 0 END as is_access
@@ -1372,7 +1447,8 @@ def api_mac_vlans_data():
             'device_name': row['device_name'] or row['device_ip'] or '?',
             'device_ip': row['device_ip'] or '',
             'port_name': row['port_name'] or '?',
-            'port_description': row['port_description'] or ''
+            'port_description': row['port_description'] or '',
+            'port_status': row['port_status']
         } for row in mac_rows]
 
         return jsonify({
