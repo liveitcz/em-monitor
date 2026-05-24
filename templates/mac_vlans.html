@@ -246,6 +246,20 @@
         .em-lang-btn { cursor: pointer; padding: 3px 8px; border-radius: 4px; transition: all 0.15s; font-weight: 600; }
         .em-lang-btn:hover { background: #f0f0ff; color: #4f46e5; }
         .em-lang-sep { opacity: 0.35; margin: 0 1px; }
+
+        /* Port status dot */
+        .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .status-dot.up   { background: #22c55e; box-shadow: 0 0 4px rgba(34,197,94,0.5); }
+        .status-dot.down { background: #ef4444; box-shadow: 0 0 4px rgba(239,68,68,0.5); }
+        /* Port filter select */
+        .port-filter-sel {
+            padding: 7px 12px; border: 1.5px solid #d1d5db; border-radius: 7px;
+            font-size: 13px; font-weight: 600; color: #374151; background: white;
+            cursor: pointer; transition: border-color 0.15s; outline: none;
+        }
+        .port-filter-sel:focus { border-color: #667eea; }
+        .vlan-chip-unnamed { background: #f3f4f6; color: #6b7280; }
+        td.status-cell { text-align: center; }
     </style>
     <script src="{{ url_for('static', filename='js/i18n.js') }}" defer></script>
 </head>
@@ -330,6 +344,11 @@
                        data-i18n-placeholder="mac_vlans.search_placeholder" placeholder="&#128269; Hledat MAC / za&#345;&#237;zen&#237; / port / deskripci..."
                        disabled>
                 <button class="btn-search" id="searchBtn" onclick="filterTable()" disabled data-i18n="mac_vlans.search_btn">Hledej</button>
+                <select class="port-filter-sel" id="portFilterSel" onchange="applyPortFilter()" disabled>
+                    <option value="active" data-i18n="mac_vlans.filter_active">Aktivní porty</option>
+                    <option value="down"   data-i18n="mac_vlans.filter_down_ports">Neaktivní porty</option>
+                    <option value="all"    data-i18n="mac_vlans.filter_all_ports">Všechny porty</option>
+                </select>
                 <button class="btn-toggle-layout" id="btnToggleLayout" onclick="toggleLayout()" data-i18n="mac_vlans.toggle_view">⇄ Změna přehledu</button>
                 <div class="export-wrap" id="exportWrap">
                     <button class="btn-export-toggle" onclick="toggleExport()">&#8595; Export</button>
@@ -349,11 +368,12 @@
                         <th data-i18n="mac_vlans.col_device">Za&#345;&#237;zen&#237;</th>
                         <th data-i18n="mac_vlans.col_port">Port</th>
                         <th data-i18n="mac_vlans.col_port_desc">Deskripce portu</th>
+                        <th data-i18n="mac_vlans.col_link">UP / DOWN</th>
                     </tr>
                 </thead>
                 <tbody id="macTableBody">
                     <tr class="info-row">
-                        <td colspan="5" data-i18n="mac_vlans.click_vlan_hint">&#128072; Klikn&#283;te na VLAN v&#253;&#353;e pro zobrazen&#237; MAC adres</td>
+                        <td colspan="6" data-i18n="mac_vlans.click_vlan_hint">&#128072; Klikn&#283;te na VLAN v&#253;&#353;e pro zobrazen&#237; MAC adres</td>
                     </tr>
                 </tbody>
             </table>
@@ -500,34 +520,19 @@
         document.getElementById('tableTitle').textContent = 'VLAN ' + name;
         resetTableState();
 
-        fetch('/api/mac_vlans_data?vlan=' + vid)
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                currentMacs  = data.macs || [];
-                filteredMacs = currentMacs.slice();
-                enableSearch();
-                renderPage(1);
-            })
-            .catch(handleFetchError);
+        loadCurrentVlan();
     }
 
     /* ── VŠECHNY VLANy ── */
     function selectAllVlans() {
         activeVlan = -1;
+        _portFilter = 'active'; // 'all ports' not supported for all-VLANs view
         renderVlans(Object.values(vlanMap));
         if (splitMode) renderSplitVlans();
         document.getElementById('tableTitle').textContent = 'V\u0161echny VLANy';
         resetTableState();
 
-        fetch('/api/mac_vlans_data?all=1')
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                currentMacs  = data.macs || [];
-                filteredMacs = currentMacs.slice();
-                enableSearch();
-                renderPage(1);
-            })
-            .catch(handleFetchError);
+        loadCurrentVlan();
     }
 
     function resetTableState() {
@@ -537,25 +542,95 @@
         document.getElementById('shownCount').textContent = '...';
         document.getElementById('paginationWrap').style.display = 'none';
         document.getElementById('macTableBody').innerHTML =
-            '<tr class="loading-row"><td colspan="5">&#9203; Na\u010d\u00edt\u00e1m...</td></tr>';
+            '<tr class="loading-row"><td colspan="6">&#9203; Na\u010d\u00edt\u00e1m...</td></tr>';
+    
+        _portFilter = 'active';
+        var _pfs = document.getElementById('portFilterSel');
+        if (_pfs) { _pfs.value = 'active'; _pfs.disabled = true; }
     }
     function enableSearch() {
         document.getElementById('macSearch').disabled = false;
         document.getElementById('searchBtn').disabled = false;
+    
+        document.getElementById('portFilterSel').disabled = false;
     }
     function handleFetchError(e) {
         document.getElementById('macTableBody').innerHTML =
-            '<tr class="info-row"><td colspan="5" style="color:#dc2626">Chyba: ' + esc(e.message) + '</td></tr>';
+            '<tr class="info-row"><td colspan="6" style="color:#dc2626">Chyba: ' + esc(e.message) + '</td></tr>';
+    }
+
+    // Port filter state: 'active' (port_status===1) or 'all'
+    var _portFilter = 'active';
+
+    function applyPortFilter() {
+        var sel = document.getElementById('portFilterSel');
+        var newFilter = sel ? sel.value : 'active';
+        if (newFilter === _portFilter) return;
+        _portFilter = newFilter;
+        // Re-fetch data from backend (DOWN ports have no MAC rows)
+        if (activeVlan !== null) {
+            resetTableState();
+            _portFilter = newFilter; // restore after reset
+            var pfs = document.getElementById('portFilterSel');
+            if (pfs) { pfs.value = newFilter; pfs.disabled = false; }
+            loadCurrentVlan();
+        }
+    }
+
+    function loadCurrentVlan() {
+        if (activeVlan === -1) {
+            // "Všechny VLANy": pass include_down when needed
+            var allUrl = '/api/mac_vlans_data?all=1';
+            if (_portFilter === 'all' || _portFilter === 'down') allUrl += '&include_down=1';
+            fetch(allUrl)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    currentMacs  = data.macs || [];
+                    _applyPortFilter();
+                    enableSearch();
+                })
+                .catch(function(e) { console.error('[mac_vlans] all error', e); });
+        } else if (activeVlan !== null) {
+            // 'active' → standard query (MACs only)
+            // 'down' or 'all' → include_down=1
+            var needDown = (_portFilter === 'all' || _portFilter === 'down');
+            var url = '/api/mac_vlans_data?vlan=' + activeVlan + (needDown ? '&include_down=1' : '');
+            fetch(url)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    currentMacs = data.macs || [];
+                    _applyPortFilter();
+                    enableSearch();
+                })
+                .catch(function(e) { console.error('[mac_vlans] vlan error', e); });
+        }
+    }
+
+    // Client-side filter after backend fetch
+    function _applyPortFilter() {
+        if (_portFilter === 'down') {
+            filteredMacs = currentMacs.filter(function(m) { return m.port_status !== 1; });
+        } else {
+            filteredMacs = currentMacs.slice();
+        }
+        renderPage(1);
     }
 
     function filterTable() {
         var q = document.getElementById('macSearch').value.toLowerCase().trim();
-        filteredMacs = q ? currentMacs.filter(function(m) {
+        // Start from port-filtered set
+        var base = (_portFilter === 'down')
+            ? currentMacs.filter(function(m) { return m.port_status !== 1; })
+            : currentMacs.slice();
+        filteredMacs = base.filter(function(m) {
+            if (!q) return true;
             return m.mac.toLowerCase().indexOf(q) !== -1
                 || m.device_name.toLowerCase().indexOf(q) !== -1
                 || m.port_name.toLowerCase().indexOf(q) !== -1
-                || (m.port_description || '').toLowerCase().indexOf(q) !== -1;
-        }) : currentMacs.slice();
+                || (m.port_description || '').toLowerCase().indexOf(q) !== -1
+                || (m.vlan_name || '').toLowerCase().indexOf(q) !== -1
+                || String(m.vlan_id).indexOf(q) !== -1;
+        });
         renderPage(1);
     }
 
@@ -572,20 +647,24 @@
 
         if (filteredMacs.length === 0) {
             document.getElementById('macTableBody').innerHTML =
-                '<tr class="info-row"><td colspan="5">\u017d\u00e1dn\u00e9 v\u00fdsledky</td></tr>';
+                '<tr class="info-row"><td colspan="6">\u017d\u00e1dn\u00e9 v\u00fdsledky</td></tr>';
             document.getElementById('paginationWrap').style.display = 'none';
             return;
         }
 
         var html = '';
         slice.forEach(function(m) {
-            var vlanLabel = m.vlan_id + (m.vlan_name ? ' (' + m.vlan_name + ')' : '');
+            var vlanInfo  = vlanMap[m.vlan_id] || {};
+            var vlanName  = m.vlan_name || vlanInfo.vlan_name || '';
+            var vlanLabel = m.vlan_id + (vlanName ? ' (' + vlanName + ')' : '');
+            var vlanClass = vlanName ? 'vlan-chip' : 'vlan-chip vlan-chip-unnamed';
             html += '<tr>'
                 + '<td class="mac-cell">'  + esc(m.mac)           + '</td>'
-                + '<td><span class="vlan-chip">' + esc(vlanLabel) + '</span></td>'
+                + '<td><span class="' + vlanClass + '">' + esc(vlanLabel) + '</span></td>'
                 + '<td><a href="/detail/'  + esc(m.device_ip) + '" class="device-link">' + esc(m.device_name) + '</a></td>'
                 + '<td><span class="port-name">' + esc(m.port_name) + '</span></td>'
                 + '<td><span class="port-desc">' + esc(m.port_description || '') + '</span></td>'
+                + '<td class="status-cell"><span class="status-dot ' + (m.port_status === 1 ? 'up' : 'down') + '" title="' + (m.port_status === 1 ? 'UP' : 'DOWN') + '"></span></td>'
                 + '</tr>';
         });
         document.getElementById('macTableBody').innerHTML = html;
@@ -611,10 +690,10 @@
     function exportCSV() {
         if (!filteredMacs.length) { alert('Nejsou data k exportu.'); return; }
         var _enc = (localStorage.getItem('em-lang') === 'en');
-        var rows = [_enc ? ['MAC address','VLAN','Device','Port','Port description'] : ['MAC adresa','VLAN','Zařízení','Port','Deskripce portu']];
+        var rows = [_enc ? ['MAC address','VLAN','Device','Port','Port description','UP/DOWN'] : ['MAC adresa','VLAN','Zařízení','Port','Deskripce portu','UP/DOWN']];
         filteredMacs.forEach(function(m) {
             var vl = m.vlan_id + (m.vlan_name ? ' (' + m.vlan_name + ')' : '');
-            rows.push([m.mac, vl, m.device_name, m.port_name, m.port_description || '']);
+            rows.push([m.mac, vl, m.device_name, m.port_name, m.port_description || '', m.port_status === 1 ? 'UP' : 'DOWN']);
         });
         var csv = rows.map(function(r) {
             return r.map(function(v) { return '"' + String(v).replace(/"/g,'""') + '"'; }).join(',');
@@ -636,14 +715,14 @@
             var vl = m.vlan_id + (m.vlan_name ? ' (' + m.vlan_name + ')' : '');
             return '<tr><td>' + esc(m.mac) + '</td><td>' + esc(vl) + '</td><td>'
                 + esc(m.device_name) + '</td><td>' + esc(m.port_name) + '</td><td>'
-                + esc(m.port_description || '') + '</td></tr>';
+                + esc(m.port_description || '') + '</td><td>' + (m.port_status === 1 ? 'UP' : 'DOWN') + '</td></tr>';
         }).join('');
         var div = document.getElementById('printArea');
         var _en = (localStorage.getItem('em-lang') === 'en');
-        var _h = _en ? ['MAC address','VLAN','Device','Port','Port description'] : ['MAC adresa','VLAN','Zařízení','Port','Deskripce portu'];
+        var _h = _en ? ['MAC address','VLAN','Device','Port','Port description','UP/DOWN'] : ['MAC adresa','VLAN','Zařízení','Port','Deskripce portu','UP/DOWN'];
         var _rec = _en ? 'records' : 'záznamů';
         div.innerHTML = '<h2>' + esc(title) + ' &mdash; ' + filteredMacs.length + ' ' + _rec + '</h2>'
-            + '<table><thead><tr><th>'+_h[0]+'</th><th>'+_h[1]+'</th><th>'+_h[2]+'</th><th>'+_h[3]+'</th><th>'+_h[4]+'</th></tr></thead>'
+            + '<table><thead><tr><th>'+_h[0]+'</th><th>'+_h[1]+'</th><th>'+_h[2]+'</th><th>'+_h[3]+'</th><th>'+_h[4]+'</th><th>'+_h[5]+'</th></tr></thead>'
             + '<tbody>' + rows + '</tbody></table>';
         setTimeout(function(){ window.print(); }, 150);
     }
@@ -665,6 +744,13 @@
             document.getElementById('pageSubtitle').textContent = (newLang === 'en')
                 ? 'Total ' + total + ' MAC addresses on ' + vlanCount + ' VLANs (access ports only)'
                 : 'Celkem ' + total + ' MAC adres na ' + vlanCount + ' VLANách (pouze access porty)';
+        }
+        // Update port filter select options
+        var selOpts = document.querySelectorAll('#portFilterSel option');
+        if (selOpts.length >= 2) {
+            selOpts[0].textContent = (newLang === 'en') ? 'Active ports'   : 'Aktivní porty';
+            if (selOpts[1]) selOpts[1].textContent = (newLang === 'en') ? 'Inactive ports' : 'Neaktivní porty';
+            if (selOpts[2]) selOpts[2].textContent = (newLang === 'en') ? 'All ports'      : 'Všechny porty';
         }
         // Refresh VLAN buttons (to update VŠECHNY/ALL VLANs label)
         renderVlans(Object.values(vlanMap));
