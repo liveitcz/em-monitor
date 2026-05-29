@@ -15,7 +15,8 @@
     "users": "Manage users",
     "settings": "Settings",
     "logout": "Log out",
-    "global_mac": "Global MAC & VLAN"
+    "global_mac": "Global MAC & VLAN",
+    "user_devices": "📡 Network devices"
   },
   "search": {
     "label": "Search MAC address:",
@@ -108,10 +109,7 @@
     "toggle_view": "⇄ Change view",
     "col_device": "Device",
     "col_port": "Port",
-    "col_port_desc": "Port description",
-    "filter_down_ports": "Inactive ports",
-    "filter_active": "Active ports",
-    "filter_all_ports": "All ports"
+    "col_port_desc": "Port description"
   },
   "devedit": {
     "title": "⚡ Device management",
@@ -251,5 +249,29 @@
     "units_detail_label": "Display PoE values in device detail in",
     "units_poe_note": "Affects PoE Budget, PoE Consumption and PoE Remaining columns",
     "time_subtitle": "Timezone & date format"
+  },
+  "ud": {
+    "title": "Network devices",
+    "subtitle": "LLDP neighbors on all switches",
+    "scan_now": "Scan LLDP now",
+    "no_data_title": "No LLDP data.",
+    "no_data_hint": "Click \"Scan LLDP now\" to run the first scan. LLDP must be enabled on the switches.",
+    "categories": "Device categories — click to filter",
+    "all": "All",
+    "table_title": "Devices",
+    "search_placeholder": "🔍 Search...",
+    "search_btn": "Search",
+    "export": "↓ CSV",
+    "loading": "Loading...",
+    "col_type": "Type",
+    "col_sys_name": "Hostname",
+    "col_mgmt_ip": "IP address",
+    "col_scanner": "Switch",
+    "col_port": "Port",
+    "col_port_desc": "Port description",
+    "col_sys_desc": "System description",
+    "col_vlan": "VLAN",
+    "no_switches": "w/o switches",
+    "export_pdf": "↓ PDF"
   }
 }
