@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="ud.title">Zařízení v síti - PoE Monitor</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1800px; margin: 0 auto; }
+
+        /* HEADER */
+        .header { background: white; padding: 16px 24px; border-radius: 10px; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .header-title h1 { font-size: 20px; color: #1f2937; display: flex; align-items: center; gap: 8px; }
+        .header-subtitle { font-size: 13px; color: #9ca3af; margin-top: 3px; }
+        .header-right { display: flex; align-items: center; gap: 12px; }
+        .home-link { display: inline-flex; align-items: center; gap: 6px; color: #667eea; text-decoration: none; font-weight: 700; font-size: 13px; background: #f0f0ff; padding: 6px 12px; border-radius: 6px; border: 1.5px solid #c7d2fe; white-space: nowrap; }
+        .home-link:hover { background: #e0e7ff; }
+        .back-link { color: #667eea; text-decoration: none; font-weight: 600; font-size: 13px; }
+        .back-link:hover { text-decoration: underline; }
+
+        #noSwitchLabel:hover { border-color: #667eea; color: #4f46e5; background: #f5f3ff; }
+        #noSwitchCheck:checked + span { color: #4f46e5; }
+        /* Lang switcher */
+        .em-lang-switch { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; color: #6b7280; user-select: none; }
+        .em-lang-btn { cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: all 0.15s; font-weight: 600; }
+        .em-lang-btn:hover { background: #f0f0ff; color: #4f46e5; }
+
+        /* SCAN BUTTON */
+        .btn-scan { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 8px 18px; border-radius: 7px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+        .btn-scan:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(102,126,234,0.4); }
+        .btn-scan:disabled { background: #9ca3af; cursor: default; transform: none; box-shadow: none; }
+
+        /* TYPE PILLS */
+        .type-section { background: white; padding: 16px 20px; border-radius: 10px; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        .type-section-title { font-size: 13px; color: #9ca3af; margin-bottom: 10px; }
+        .type-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+        .type-pill { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: 600; border: 2px solid transparent; transition: all 0.15s; user-select: none; }
+        .type-pill:hover { opacity: 0.85; }
+        .type-pill.active { border-color: rgba(0,0,0,0.25); }
+        .type-pill-count { background: rgba(0,0,0,0.15); border-radius: 10px; padding: 1px 7px; font-size: 11px; }
+        .pill-KAMERA    { background: #fee2e2; color: #991b1b; }
+        .pill-AP        { background: #d1fae5; color: #065f46; }
+        .pill-SWITCH    { background: #dbeafe; color: #1e40af; }
+        .pill-TELEFON   { background: #fef3c7; color: #92400e; }
+        .pill-TISKARNA  { background: #f3e8ff; color: #6b21a8; }
+        .pill-TERMINAL  { background: #e0f2fe; color: #075985; }
+        .pill-PC        { background: #f1f5f9; color: #374151; }
+        .pill-NEZARAZENO{ background: #f9fafb; color: #6b7280; border: 1.5px solid #e5e7eb; }
+        .pill-ALL       { background: #111827; color: #fff; }
+        .pill-ALL.active{ border-color: #667eea; }
+
+        /* TABLE SECTION */
+        .table-section { background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); overflow: hidden; }
+        .table-header { padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f3f4f6; gap: 12px; flex-wrap: wrap; }
+        .table-title { font-size: 16px; font-weight: 700; color: #1f2937; display: flex; align-items: center; gap: 8px; }
+        .count-badge { background: #667eea; color: white; border-radius: 12px; padding: 2px 10px; font-size: 12px; font-weight: 700; }
+        .search-row { display: flex; gap: 8px; align-items: center; }
+        .search-input { padding: 7px 12px; border: 1.5px solid #d1d5db; border-radius: 7px; font-size: 13px; min-width: 260px; transition: border-color 0.15s; }
+        .search-input:focus { outline: none; border-color: #667eea; }
+        .btn-search { padding: 7px 14px; background: #111827; color: white; border: none; border-radius: 7px; font-size: 13px; font-weight: 700; cursor: pointer; }
+        .btn-export { padding: 7px 14px; background: #059669; color: white; border: none; border-radius: 7px; font-size: 13px; font-weight: 700; cursor: pointer; text-decoration: none; }
+
+        /* TABLE */
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        thead tr { background: #1f2937; }
+        thead th { padding: 11px 14px; text-align: left; font-size: 12px; font-weight: 700; color: #e5e7eb; text-transform: uppercase; letter-spacing: 0.5px; }
+        tbody tr { border-bottom: 1px solid #f3f4f6; transition: background 0.1s; }
+        tbody tr:hover { background: #f9fafb; }
+        tbody td { padding: 10px 14px; font-size: 13px; color: #374151; }
+        .type-badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+        .device-link { color: #667eea; text-decoration: none; font-weight: 600; }
+        .device-link:hover { text-decoration: underline; }
+        .empty-row td { text-align: center; padding: 40px; color: #9ca3af; font-size: 14px; }
+        .loading-row td { text-align: center; padding: 40px; color: #9ca3af; font-size: 14px; }
+        .sys-desc-cell { color: #6b7280; font-size: 12px; min-width: 200px; }
+        .mgmt-ip { font-family: monospace; font-size: 12px; color: #374151; }
+
+        /* Pagination */
+        .pagination { display: flex; justify-content: center; align-items: center; gap: 6px; padding: 14px; border-top: 1px solid #f3f4f6; flex-wrap: wrap; }
+        .page-btn { padding: 5px 11px; border: 1.5px solid #d1d5db; border-radius: 5px; background: white; cursor: pointer; font-size: 13px; font-weight: 600; color: #374151; transition: all 0.1s; }
+        .page-btn:hover { border-color: #667eea; color: #667eea; }
+        .page-btn.active { background: #667eea; color: white; border-color: #667eea; }
+        .page-info { font-size: 13px; color: #9ca3af; }
+
+        /* Spinner */
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid #ddd; border-top-color: #667eea; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
+
+        /* No data warning */
+        .warning-box { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 12px 16px; margin: 16px 0; color: #92400e; font-size: 13px; display: none; }
+        .warning-box.show { display: block; }
+    </style>
+    <script src="{{ url_for('static', filename='js/i18n.js') }}" defer></script>
+</head>
+<body>
+<div class="container">
+
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-left">
+            <a href="/" class="home-link" data-i18n="common.home">🏠 DOMŮ</a>
+            <div class="header-title">
+                <h1>📡 <span data-i18n="ud.title">Zařízení v síti</span></h1>
+                <div class="header-subtitle" id="pageSubtitle" data-i18n="ud.subtitle">LLDP sousedé na všech switchích</div>
+            </div>
+        </div>
+        <div class="header-right">
+
+            <span class="em-lang-switch">
+                <span class="em-lang-btn" id="em-lang-cs" onclick="window.emI18n && window.emI18n.setLang('cs')">CZ</span>
+                <span style="opacity:0.35">|</span>
+                <span class="em-lang-btn" id="em-lang-en" onclick="window.emI18n && window.emI18n.setLang('en')">EN</span>
+            </span>
+            <a href="/" class="back-link" data-i18n="common.back_overview">← Zpět na přehled</a>
+        </div>
+    </div>
+
+    <!-- NO DATA WARNING -->
+    <div class="warning-box" id="noDataWarning">
+        ⚠️ <strong data-i18n="ud.no_data_title">Žádná data.</strong>
+        <span data-i18n="ud.no_data_hint">Klikněte na „Skenovat zařízení nyní" pro první načtení. LLDP musí být povoleno na switchích.</span>
+    </div>
+
+    <!-- TYPE PILLS -->
+    <div class="type-section">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div class="type-section-title" style="margin-bottom:0" data-i18n="ud.categories">Kategorie zařízení — kliknutím filtrujete</div>
+            <label id="noSwitchLabel" style="display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:#6b7280;cursor:pointer;user-select:none;padding:4px 12px;border:1.5px solid #e5e7eb;border-radius:20px;transition:all 0.15s;" title="Skrýt switche z tabulky">
+                <input type="checkbox" id="noSwitchCheck" onchange="toggleNoSwitch()" style="cursor:pointer;width:14px;height:14px;">
+                <span data-i18n="ud.no_switches">bez switchů</span>
+            </label>
+        </div>
+        <div class="type-pills" id="typePills">
+            <div class="type-pill pill-ALL active" onclick="selectType('ALL')">
+                🌐 <span data-i18n="ud.all">Vše</span> <span class="type-pill-count" id="cnt-ALL">0</span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-section">
+        <div class="table-header">
+        <div class="table-title">
+        <span id="tableTitle" data-i18n="ud.table_title">Zařízení</span>
+        <span class="count-badge" id="countBadge">0</span>
+        </div>
+        <div class="search-row">
+        <input type="text" class="search-input" id="searchInput"
+        style="min-width:360px"
+        placeholder="🔍 Hledat hostname / IP / switch / port / deskripci..."
+        data-i18n-placeholder="ud.search_placeholder"
+        oninput="filterTable()">
+        <button class="btn-search" onclick="filterTable()" data-i18n="ud.search_btn">Hledej</button>
+            <button class="btn-export" onclick="exportCSV()" data-i18n="ud.export">↓ CSV</button>
+                <button class="btn-export" onclick="exportPDF()" style="background:#7c3aed" data-i18n="ud.export_pdf">↓ PDF</button>
+                <button class="btn-scan" id="btnScanNow" onclick="scanNow()" style="margin-left:4px">🔄 <span data-i18n="ud.scan_now">SKENOVAT ZAŘÍZENÍ</span></button>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:135px" data-i18n="ud.col_type">Typ</th>
+                    <th data-sort="sys_name"     data-label="Hostname"  onclick="sortBy('sys_name')"     style="cursor:pointer;user-select:none" data-i18n="ud.col_sys_name">Hostname ↕</th>
+                    <th data-sort="mgmt_ip"      data-label="IP adresa" onclick="sortBy('mgmt_ip')"      style="cursor:pointer;user-select:none;width:115px" data-i18n="ud.col_mgmt_ip">IP adresa ↑</th>
+                    <th data-sort="scanner_name" data-label="Switch"    onclick="sortBy('scanner_name')" style="cursor:pointer;user-select:none;width:160px" data-i18n="ud.col_scanner">Switch ↕</th>
+                    <th data-sort="local_port" data-label="Port" onclick="sortBy('local_port')" style="cursor:pointer;user-select:none;width:120px" data-i18n="ud.col_port">Port ↕</th>
+                    <th style="width:160px" data-i18n="ud.col_vlan">VLAN</th>
+                    <th data-sort="port_desc" data-label="Deskripce portu" onclick="sortBy('port_desc')" style="cursor:pointer;user-select:none;width:155px" data-i18n="ud.col_port_desc">Deskripce portu ↕</th>
+                    <th data-i18n="ud.col_sys_desc">Popis zařízení</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr class="loading-row"><td colspan="8"><span class="spinner"></span><span data-i18n="ud.loading">Načítám...</span></td></tr>
+            </tbody>
+        </table>
+
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+</div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+var allNeighbors  = [];
+var filteredItems = [];
+var activeType    = 'ALL';
+var currentPage   = 1;
+var PAGE_SIZE     = 100;
+var _sortField    = 'mgmt_ip';
+var _sortDir      = 'asc';
+
+// ── Type config (icon + label CZ/EN) ─────────────────────────────────────────
+var TYPE_CONFIG = {
+    'KAMERA':     { icon: '📷', cs: 'Kamery',       en: 'Cameras',    cls: 'pill-KAMERA' },
+    'AP':         { icon: '📡', cs: 'Access Point',en: 'Access Point',cls:'pill-AP' },
+    'SWITCH':     { icon: '🔀', cs: 'Switche',      en: 'Switches',   cls: 'pill-SWITCH' },
+    'TELEFON':    { icon: '📞', cs: 'Telefony',     en: 'Phones',     cls: 'pill-TELEFON' },
+    'TISKARNA':   { icon: '🖨️', cs: 'Tiskárny',     en: 'Printers',   cls: 'pill-TISKARNA' },
+    'TERMINAL':   { icon: '🖥️', cs: 'Terminály',    en: 'Terminals',  cls: 'pill-TERMINAL' },
+    'PC':         { icon: '💻', cs: 'Počítače',     en: 'Computers',  cls: 'pill-PC' },
+    'NEZARAZENO': { icon: '❓', cs: 'Neznámé',   en: 'Unknown',cls:'pill-NEZNAME' },
+};
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+    // Restore noSwitch state from localStorage
+    var _nsCheck = document.getElementById('noSwitchCheck');
+    if (_nsCheck && localStorage.getItem('em-no-switch') === '1') {
+        _nsCheck.checked = true;
+    }
+    loadData();
+});
+
+// ── Load data from API ────────────────────────────────────────────────────────
+function loadData() {
+    fetch('/api/lldp_data')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            allNeighbors = data.neighbors || [];
+            renderTypePills(data.type_counts || {});
+            applyFilter();
+
+            if (allNeighbors.length === 0) {
+                document.getElementById('noDataWarning').classList.add('show');
+            } else {
+                document.getElementById('noDataWarning').classList.remove('show');
+                document.getElementById('pageSubtitle').textContent =
+                    (localStorage.getItem('em-lang') === 'en')
+                        ? 'Total ' + allNeighbors.length + ' LLDP neighbors on ' + Object.keys(data.type_counts || {}).length + ' types'
+                        : 'Celkem ' + allNeighbors.length + ' sousedů ve ' + Object.keys(data.type_counts || {}).length + ' kategoriích';
+            }
+        })
+        .catch(function(e) {
+            document.getElementById('tableBody').innerHTML =
+                '<tr class="empty-row"><td colspan="8">❌ Chyba načítání: ' + esc(e.message) + '</td></tr>';
+        });
+}
+
+// ── Type pills ────────────────────────────────────────────────────────────────
+function renderTypePills(typeCounts) {
+    var lang = localStorage.getItem('em-lang') || 'cs';
+    var _noSwChecked = localStorage.getItem('em-no-switch') === '1';
+    var total = _noSwChecked
+        ? allNeighbors.filter(function(n){ return n.device_type !== 'SWITCH'; }).length
+        : allNeighbors.length;
+    var pills = document.getElementById('typePills');
+
+    var html = '<div class="type-pill pill-ALL' + (activeType === 'ALL' ? ' active' : '') + '" onclick="selectType(\'ALL\')">'
+        + '🌐 <span>' + (lang === 'en' ? 'All' : 'Vše') + '</span>'
+        + ' <span class="type-pill-count" id="cnt-ALL">' + total + '</span></div>';
+
+    // Order: most frequent types first, then unknown
+    var order = ['KAMERA','AP','SWITCH','TELEFON','TISKARNA','TERMINAL','PC','NEZARAZENO'];
+    order.forEach(function(type) {
+        var cnt = typeCounts[type] || 0;
+        if (!cnt) return;
+        var cfg = TYPE_CONFIG[type] || { icon: '❓', cs: type, en: type, cls: 'pill-NEZARAZENO' };
+        var label = lang === 'en' ? cfg.en : cfg.cs;
+        html += '<div class="type-pill ' + cfg.cls + (activeType === type ? ' active' : '') + '" onclick="selectType(\'' + type + '\')">'
+            + cfg.icon + ' ' + label
+            + ' <span class="type-pill-count">' + cnt + '</span></div>';
+    });
+
+    pills.innerHTML = html;
+    // Hide SWITCH pill if noSwitch checked
+    var ns = document.getElementById('noSwitchCheck');
+    var nsChecked = ns && ns.checked;
+    document.querySelectorAll('#typePills .type-pill').forEach(function(p) {
+        if (p.getAttribute('onclick') === "selectType('SWITCH')") {
+            p.style.display = nsChecked ? 'none' : '';
+        }
+    });
+}
+
+// ── Type filter ───────────────────────────────────────────────────────────────
+function selectType(type) {
+    activeType = type;
+    currentPage = 1;
+    applyFilter();
+
+    // Update pill active state
+    document.querySelectorAll('.type-pill').forEach(function(p) {
+        p.classList.remove('active');
+    });
+    document.getElementById('typePills').querySelectorAll('.type-pill').forEach(function(p) {
+        if ((type === 'ALL' && p.classList.contains('pill-ALL')) ||
+            p.getAttribute('onclick') === "selectType('" + type + "')") {
+            p.classList.add('active');
+        }
+    });
+    renderTypePills(_lastTypeCounts);
+}
+
+var _lastTypeCounts = {};
+
+// ── Apply filter (type + search) ──────────────────────────────────────────────
+    function toggleNoSwitch() {
+        var ns = document.getElementById('noSwitchCheck');
+        var checked = ns && ns.checked;
+        localStorage.setItem('em-no-switch', checked ? '1' : '0');
+        // Immediately show/hide SWITCH pill without waiting for applyFilter
+        document.querySelectorAll('#typePills .type-pill').forEach(function(p) {
+            if (p.getAttribute('onclick') === "selectType('SWITCH')") {
+                p.style.display = checked ? 'none' : '';
+            }
+        });
+        // Reset to ALL if currently on SWITCH
+        if (checked && activeType === 'SWITCH') {
+            activeType = 'ALL';
+            document.querySelectorAll('.type-pill').forEach(function(p){ p.classList.remove('active'); });
+            var allPill = document.querySelector('.pill-ALL');
+            if (allPill) allPill.classList.add('active');
+        }
+        applyFilter();
+    }
+
+function sortBy(field) {
+        if (_sortField === field) {
+            _sortDir = (_sortDir === 'asc') ? 'desc' : 'asc';
+        } else {
+            _sortField = field;
+            _sortDir = 'asc';
+        }
+        filteredItems.sort(function(a, b) {
+            var av = _sortValue(a, _sortField), bv = _sortValue(b, _sortField);
+            if (av < bv) return _sortDir === 'asc' ? -1 : 1;
+            if (av > bv) return _sortDir === 'asc' ?  1 : -1;
+            return 0;
+        });
+        updateSortHeaders();
+        renderPage(1);
+    }
+
+    function _sortValue(n, field) {
+        if (field === 'mgmt_ip') {
+            // Sort IPs numerically
+            var parts = (n.mgmt_ip || '').split('.').map(Number);
+            return parts.length === 4 ? parts[0]*16777216 + parts[1]*65536 + parts[2]*256 + parts[3] : 0;
+        }
+        if (field === 'sys_name')     return (n.sys_name     || '').toLowerCase();
+        if (field === 'scanner_name') return (n.scanner_name || '').toLowerCase();
+        if (field === 'port_desc')  return (n.port_desc || '').toLowerCase();
+        if (field === 'local_port') {
+            var p = (n.local_port || '').replace(/[^0-9\/]/g, '');
+            var nums = p.split('/').map(function(x){return parseInt(x,10)||0;});
+            return nums.reduce(function(a,v,i){return a+v*Math.pow(1000,3-i);},0);
+        }
+        return '';
+    }
+
+    function updateSortHeaders() {
+        document.querySelectorAll('th[data-sort]').forEach(function(th) {
+            var f = th.getAttribute('data-sort');
+            th.innerHTML = th.getAttribute('data-label')
+                + (f === _sortField ? (_sortDir === 'asc' ? ' ↑' : ' ↓') : ' ↕');
+        });
+    }
+
+    function applyFilter() {
+    var q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+    var ns_el = document.getElementById('noSwitchCheck');
+    var noSwitch = ns_el ? ns_el.checked : (localStorage.getItem('em-no-switch') === '1');
+    filteredItems = allNeighbors.filter(function(n) {
+        if (noSwitch && n.device_type === 'SWITCH') return false;
+        if (activeType !== 'ALL' && n.device_type !== activeType) return false;
+        if (!q) return true;
+        return (n.sys_name || '').toLowerCase().indexOf(q) !== -1
+            || (n.mgmt_ip || '').indexOf(q) !== -1
+            || (n.scanner_name || '').toLowerCase().indexOf(q) !== -1
+            || (n.local_port || '').toLowerCase().indexOf(q) !== -1
+            || (n.sys_desc || '').toLowerCase().indexOf(q) !== -1
+            || (n.port_desc || '').toLowerCase().indexOf(q) !== -1;
+    });
+    // Sort
+    filteredItems.sort(function(a, b) {
+        var av = _sortValue(a, _sortField), bv = _sortValue(b, _sortField);
+        if (av < bv) return _sortDir === 'asc' ? -1 : 1;
+        if (av > bv) return _sortDir === 'asc' ?  1 : -1;
+        return 0;
+    });
+    currentPage = 1;
+    renderPage(1);
+    document.getElementById('countBadge').textContent = filteredItems.length;
+    // Update "Vše" pill count to reflect current filter
+    var allCntEl = document.getElementById('cnt-ALL');
+    if (allCntEl) {
+        var _noSw = document.getElementById('noSwitchCheck');
+        var _noSwChecked = _noSw ? _noSw.checked : (localStorage.getItem('em-no-switch') === '1');
+        var visibleAll = _noSwChecked
+            ? allNeighbors.filter(function(n){ return n.device_type !== 'SWITCH'; }).length
+            : allNeighbors.length;
+        allCntEl.textContent = visibleAll;
+    }
+}
+
+function filterTable() { applyFilter(); }
+
+// ── Render table page ─────────────────────────────────────────────────────────
+    function _cleanPortDesc(desc) {
+        if (!desc) return '-';
+        // These are remote-device port names (camera/AP side), not switch descriptions
+        var remote = ['eth0','eth1','eth2','Gi0','GigabitEthernet0','Gi1','fa0',
+                      'ge-0/0/0','ge-0/0/1','0','1'];
+        var d = (desc || '').trim();
+        if (d === '' || remote.indexOf(d) !== -1) return '-';
+        return d;
+    }
+
+    function shortenPort(name) {
+        if (!name) return name;
+        var map = [
+            ['GigabitEthernet','Gi'],['TenGigabitEthernet','Te'],
+            ['HundredGigabitEthernet','Hu'],['TwentyFiveGigabitEthernet','Twe'],
+            ['FortyGigabitEthernet','Fo'],['FastEthernet','Fa'],
+            ['Port-channel','Po'],['port-channel','Po']
+        ];
+        for (var i=0;i<map.length;i++)
+            if (name.indexOf(map[i][0])===0) return map[i][1]+name.slice(map[i][0].length);
+        var m=name.match(/^([A-Za-z]{2})[A-Za-z]*(.+)$/);
+        return m ? m[1]+m[2] : name;
+    }
+
+function renderPage(page) {
+    currentPage = page;
+    var start = (page - 1) * PAGE_SIZE;
+    var slice = filteredItems.slice(start, start + PAGE_SIZE);
+    var lang  = localStorage.getItem('em-lang') || 'cs';
+    var tbody = document.getElementById('tableBody');
+
+    if (slice.length === 0) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="8">'
+            + (lang === 'en' ? 'No results' : 'Žádné výsledky') + '</td></tr>';
+        document.getElementById('pagination').innerHTML = '';
+        return;
+    }
+
+    var html = '';
+    slice.forEach(function(n) {
+        var cfg = TYPE_CONFIG[n.device_type] || { icon: '❓', cs: n.device_type, en: n.device_type, cls: 'pill-NEZARAZENO' };
+        var typeLabel = (lang === 'en' ? cfg.en : cfg.cs);
+        var sysDesc = n.sys_desc || '';
+        // Truncate sys_desc to first line
+        var sysDescShort = sysDesc.split('\n')[0].substring(0, 120);
+        var mgmtLink = n.mgmt_ip
+            ? '<a href="http://' + esc(n.mgmt_ip) + '" target="_blank" class="mgmt-ip device-link">' + esc(n.mgmt_ip) + '</a>'
+            : '<span style="color:#d1d5db;">—</span>';
+        var scannerLink = n.scanner_ip
+            ? '<a href="/detail/' + esc(n.scanner_ip) + '" class="device-link">' + esc(n.scanner_name) + '</a>'
+            : esc(n.scanner_name);
+
+        html += '<tr>'
+            + '<td><span class="type-badge ' + cfg.cls + '">' + cfg.icon + ' ' + esc(typeLabel) + '</span></td>'
+            + '<td><strong>' + esc(n.sys_name || '—') + '</strong></td>'
+            + '<td>' + mgmtLink + '</td>'
+            + '<td>' + scannerLink + '</td>'
+            + '<td style="white-space:nowrap"><code style="font-size:12px">' + esc(shortenPort(n.local_port || '')) + '</code></td>'
+            + '<td style="white-space:nowrap">' + (n.vlan_id ? '<span style="background:#ede9fe;color:#5b21b6;border-radius:8px;padding:1px 8px;font-size:11px;font-weight:700">' + esc(String(n.vlan_id)) + (n.vlan_name ? ' (' + esc(n.vlan_name) + ')' : '') + '</span>' : '<span style="color:#d1d5db">—</span>') + '</td>'
+            + '<td style="white-space:nowrap;max-width:155px;overflow:hidden;text-overflow:ellipsis"><span style="font-size:12px;color:#6b7280">' + esc(_cleanPortDesc(n.port_desc)) + '</span></td>'
+            + '<td class="sys-desc-cell" title="' + esc(sysDesc) + '">' + esc(sysDescShort) + (sysDescShort.length >= 120 ? '…' : '') + '</td>'
+            + '</tr>';
+    });
+    tbody.innerHTML = html;
+
+    // Pagination
+    var totalPages = Math.ceil(filteredItems.length / PAGE_SIZE);
+    renderPagination(page, totalPages);
+}
+
+function renderPagination(page, totalPages) {
+    var pg = document.getElementById('pagination');
+    if (totalPages <= 1) { pg.innerHTML = ''; return; }
+    var lang = localStorage.getItem('em-lang') || 'cs';
+    var html = '';
+    if (page > 1) html += '<button class="page-btn" onclick="renderPage(' + (page-1) + ')">« ' + (lang==='en'?'Prev':'Předchozí') + '</button>';
+    var from = Math.max(1, page-2), to = Math.min(totalPages, page+2);
+    if (from > 1) html += '<button class="page-btn" onclick="renderPage(1)">1</button>' + (from > 2 ? '<span>…</span>' : '');
+    for (var i = from; i <= to; i++) html += '<button class="page-btn' + (i===page?' active':'') + '" onclick="renderPage('+i+')">'+i+'</button>';
+    if (to < totalPages) html += (to < totalPages-1 ? '<span>…</span>' : '') + '<button class="page-btn" onclick="renderPage('+totalPages+')">'+totalPages+'</button>';
+    if (page < totalPages) html += '<button class="page-btn" onclick="renderPage(' + (page+1) + ')">' + (lang==='en'?'Next':'Další') + ' »</button>';
+    var langInfo = lang==='en' ? 'Page ' + page + ' of ' + totalPages + ' — ' + filteredItems.length + ' records'
+                               : 'Strana ' + page + ' z ' + totalPages + ' — ' + filteredItems.length + ' záznamů';
+    html += '<span class="page-info">' + langInfo + '</span>';
+    pg.innerHTML = html;
+}
+
+// ── Scan now ──────────────────────────────────────────────────────────────────
+function scanNow() {
+    var btn = document.getElementById('btnScanNow');
+    btn.disabled = true;
+    var lang = localStorage.getItem('em-lang') || 'cs';
+    btn.innerHTML = '<span class="spinner"></span>' + (lang === 'en' ? 'Scanning...' : 'Skenuji...');
+
+    fetch('/api/lldp_scan_now', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            btn.innerHTML = '✅ ' + (lang === 'en' ? 'Scan started' : 'Sken spuštěn');
+            // Reload data after ~10 seconds (scan runs in background)
+            setTimeout(function() {
+                btn.disabled = false;
+                btn.innerHTML = '🔄 <span>' + (lang === 'en' ? 'SCAN NETWORK DEVICES' : 'SKENOVAT ZAŘÍZENÍ') + '</span>';
+                loadData();
+            }, 10000);
+        })
+        .catch(function(e) {
+            btn.disabled = false;
+            btn.innerHTML = '❌ ' + (lang === 'en' ? 'Error' : 'Chyba');
+            setTimeout(function() {
+                btn.innerHTML = '🔄 <span>' + (lang === 'en' ? 'SCAN NETWORK DEVICES' : 'SKENOVAT ZAŘÍZENÍ') + '</span>';
+            }, 3000);
+        });
+}
+
+// ── Export CSV ────────────────────────────────────────────────────────────────
+function exportCSV() {
+    var lang = localStorage.getItem('em-lang') || 'cs';
+    var headers = lang === 'en'
+        ? ['Type','Hostname','IP address','Switch','Port','VLAN','Port desc','System description']
+        : ['Typ','Hostname','IP adresa','Switch','Port','VLAN','Deskripce portu','Popis zařízení'];
+
+    var rows = [headers];
+    filteredItems.forEach(function(n) {
+        var cfg = TYPE_CONFIG[n.device_type] || { cs: n.device_type, en: n.device_type };
+        var vlanStr = n.vlan_id ? (n.vlan_id + (n.vlan_name ? ' (' + n.vlan_name + ')' : '')) : '';
+        rows.push([
+            lang === 'en' ? cfg.en : cfg.cs,
+            n.sys_name || '',
+            n.mgmt_ip  || '',
+            n.scanner_name || n.scanner_ip,
+            n.local_port || '',
+            vlanStr,
+            n.port_desc  || '',
+            (n.sys_desc || '').split('\n')[0],
+        ]);
+    });
+
+    var csv = rows.map(function(r) {
+        return r.map(function(c) { return '"' + String(c).replace(/"/g,'""') + '"'; }).join(',');
+    }).join('\n');
+
+    var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href   = url;
+    a.download = (lang === 'en' ? 'network-devices.csv' : 'zarizeni-v-siti.csv');
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function exportPDF() {
+    var lang = localStorage.getItem('em-lang') || 'cs';
+    var _en = lang === 'en';
+    var _h = _en
+        ? ['Type','Hostname','IP address','Switch','Port','VLAN','Port desc','System description']
+        : ['Typ','Hostname','IP adresa','Switch','Port','VLAN','Deskripce portu','Popis zařízení'];
+    var title = _en
+        ? 'Network devices — ' + filteredItems.length + ' records'
+        : 'Zařízení v síti — ' + filteredItems.length + ' záznamů';
+    var rows = filteredItems.map(function(n) {
+        var cfg = TYPE_CONFIG[n.device_type] || { cs: n.device_type, en: n.device_type };
+        var vlanStr = n.vlan_id ? (String(n.vlan_id) + (n.vlan_name ? ' (' + n.vlan_name + ')' : '')) : '-';
+        return '<tr>'
+            + '<td>' + esc(_en ? cfg.en : cfg.cs) + '</td>'
+            + '<td>' + esc(n.sys_name || '-') + '</td>'
+            + '<td>' + esc(n.mgmt_ip || '-') + '</td>'
+            + '<td>' + esc(n.scanner_name || '-') + '</td>'
+            + '<td>' + esc(shortenPort(n.local_port || '')) + '</td>'
+            + '<td>' + esc(vlanStr) + '</td>'
+            + '<td>' + esc(_cleanPortDesc(n.port_desc)) + '</td>'
+            + '<td>' + esc((n.sys_desc || '-').split('\n')[0].substring(0, 80)) + '</td>'
+            + '</tr>';
+    }).join('');
+    var thead = '<tr>' + _h.map(function(c){ return '<th>' + esc(c) + '</th>'; }).join('') + '</tr>';
+    document.getElementById('printAreaUD').innerHTML =
+        '<h2>' + esc(title) + '</h2>'
+        + '<table><thead>' + thead + '</thead><tbody>' + rows + '</tbody></table>';
+    setTimeout(function(){ window.print(); }, 150);
+}
+
+function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── onLangChange hook ─────────────────────────────────────────────────────────
+window.onLangChange = function(lang) {
+    renderTypePills(_lastTypeCounts);
+    applyFilter();
+    document.getElementById('searchInput').placeholder =
+        lang === 'en' ? '🔍 Search...' : '🔍 Hledat...';
+};
+
+// Store type counts for re-render
+var _origLoadData = loadData;
+loadData = function() {
+    fetch('/api/lldp_data')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            allNeighbors = data.neighbors || [];
+            _lastTypeCounts = data.type_counts || {};
+            renderTypePills(_lastTypeCounts);
+            applyFilter();
+            if (allNeighbors.length === 0) {
+                document.getElementById('noDataWarning').classList.add('show');
+            } else {
+                document.getElementById('noDataWarning').classList.remove('show');
+                var lang = localStorage.getItem('em-lang') || 'cs';
+                document.getElementById('pageSubtitle').textContent =
+                    lang === 'en'
+                        ? 'Total ' + allNeighbors.length + ' LLDP neighbors in ' + Object.keys(_lastTypeCounts).length + ' categories'
+                        : 'Celkem ' + allNeighbors.length + ' sousedů ve ' + Object.keys(_lastTypeCounts).length + ' kategoriích';
+            }
+        })
+        .catch(function(e) {
+            document.getElementById('tableBody').innerHTML =
+                '<tr class="empty-row"><td colspan="8">❌ ' + esc(e.message) + '</td></tr>';
+        });
+};
+</script>
+<div id="printAreaUD" style="display:none"></div>
+<style>
+@media print {
+    body > * { display: none !important; }
+    #printAreaUD { display: block !important; }
+    #printAreaUD table { border-collapse: collapse; width: 100%; font-size: 10px; }
+    #printAreaUD th { background: #1f2937 !important; color: white !important; padding: 5px 8px; text-align: left; -webkit-print-color-adjust: exact; }
+    #printAreaUD td { padding: 4px 8px; border-bottom: 1px solid #e5e7eb; }
+    #printAreaUD h2 { font-size: 14px; margin-bottom: 8px; }
+}
+</style>
+</body>
+</html>

@@ -579,10 +579,7 @@
 
     function loadCurrentVlan() {
         if (activeVlan === -1) {
-            // "Všechny VLANy": pass include_down when needed
-            var allUrl = '/api/mac_vlans_data?all=1';
-            if (_portFilter === 'all' || _portFilter === 'down') allUrl += '&include_down=1';
-            fetch(allUrl)
+            fetch('/api/mac_vlans_data?all=1')
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     currentMacs  = data.macs || [];
