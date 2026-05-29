@@ -154,6 +154,35 @@ def init_database():
         # ================================================================
         # USERS TABLE
         # ================================================================
+        # LLDP neighbors table for /user_devices page
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS lldp_neighbors (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                scanner_ip    TEXT NOT NULL,
+                local_ifindex INTEGER,
+                local_port    TEXT,
+                remote_idx    INTEGER,
+                sys_name      TEXT,
+                sys_desc      TEXT,
+                port_desc     TEXT,
+                caps_byte     INTEGER DEFAULT 0,
+                mgmt_ip       TEXT,
+                device_type   TEXT,
+                timestamp     TEXT,
+                UNIQUE(scanner_ip, local_ifindex, remote_idx)
+            )
+        ''')
+
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_lldp_scanner_ip
+            ON lldp_neighbors(scanner_ip)
+        ''')
+
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_lldp_device_type
+            ON lldp_neighbors(device_type)
+        ''')
+
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

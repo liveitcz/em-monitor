@@ -910,7 +910,7 @@ def priority_scan_worker(ip):
         logger_priority.info(f"🚀 PRIORITY SCAN STARTED for {ip} (using dedicated worker)")
         
         # Import inside function to avoid circular imports
-        from snmp_helper import get_poe_data, save_all_ports_to_db, save_vlan_names_to_db, save_mac_addresses_to_db
+        from snmp_helper import get_poe_data, save_all_ports_to_db, save_vlan_names_to_db, save_mac_addresses_to_db, scan_lldp, save_lldp_to_db
         
         # Get device name from devices.json
         device_name = 'Unknown'
@@ -1230,6 +1230,147 @@ def mac_vlans():
     return render_template('mac_vlans.html')
 
 
+@app.route('/user_devices')
+@login_required
+def user_devices():
+    """LLDP Network devices overview page"""
+    return render_template('user_devices.html')
+
+
+@app.route('/api/lldp_data')
+@login_required
+def api_lldp_data():
+    """
+    Returns LLDP neighbor data for /user_devices page.
+    ?type=KAMERA|AP|SWITCH|...  filter by device type
+    ?all=1  return all types
+    ?scan=1  trigger fresh LLDP scan before returning data
+    """
+    type_filter = request.args.get('type', '')
+    scan_fresh  = request.args.get('scan', type=int, default=0)
+
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Optional fresh scan
+        if scan_fresh:
+            cursor.execute('SELECT device_ip FROM poe_devices ORDER BY device_ip')
+            ips = [r['device_ip'] for r in cursor.fetchall()]
+            conn.close()
+            for ip in ips:
+                try:
+                    neighbors = scan_lldp(ip)
+                    save_lldp_to_db(ip, neighbors)
+                except Exception as e:
+                    logger.warning(f"LLDP scan failed for {ip}: {e}")
+            conn = get_db()
+            cursor = conn.cursor()
+
+        # Get distinct device types for the category pills
+        cursor.execute("""
+            SELECT device_type, COUNT(*) as cnt
+            FROM (
+                SELECT device_type
+                FROM lldp_neighbors
+                GROUP BY scanner_ip, local_port
+            )
+            GROUP BY device_type
+            ORDER BY cnt DESC
+        """)
+        type_counts = {r['device_type']: r['cnt'] for r in cursor.fetchall()}
+
+        # Get neighbors
+        if type_filter:
+            cursor.execute("""
+                SELECT n.*, d.device_name,
+                       p.port_vlan_id,
+                       COALESCE(vn.vlan_name, '') as vlan_name
+                FROM lldp_neighbors n
+                LEFT JOIN poe_devices d ON n.scanner_ip = d.device_ip
+                LEFT JOIN poe_ports p
+                    ON n.scanner_ip = p.device_ip AND p.port_name = n.local_port
+                LEFT JOIN poe_vlan_names vn
+                    ON p.port_vlan_id = vn.vlan_id AND vn.device_ip = p.device_ip
+                WHERE n.device_type = ?
+                GROUP BY n.scanner_ip, n.local_port
+                ORDER BY n.device_type, n.sys_name, n.scanner_ip, n.local_port
+            """, (type_filter,))
+        else:
+            cursor.execute("""
+                SELECT n.*, d.device_name,
+                       p.port_vlan_id,
+                       COALESCE(vn.vlan_name, '') as vlan_name
+                FROM lldp_neighbors n
+                LEFT JOIN poe_devices d ON n.scanner_ip = d.device_ip
+                LEFT JOIN poe_ports p
+                    ON n.scanner_ip = p.device_ip AND p.port_name = n.local_port
+                LEFT JOIN poe_vlan_names vn
+                    ON p.port_vlan_id = vn.vlan_id AND vn.device_ip = p.device_ip
+                GROUP BY n.scanner_ip, n.local_port
+                ORDER BY n.device_type, n.sys_name, n.scanner_ip, n.local_port
+            """)
+
+        rows = cursor.fetchall()
+        conn.close()
+
+        neighbors = [{
+            'scanner_ip':   row['scanner_ip'],
+            'scanner_name': row['device_name'] or row['scanner_ip'],
+            'local_port':   row['local_port'] or f"ifIdx:{row['local_ifindex']}",
+            'vlan_id':      row['port_vlan_id'] or '',
+            'vlan_name':    row['vlan_name'] or '',
+            'sys_name':     row['sys_name'] or '-',
+            'sys_desc':     row['sys_desc'] or '-',
+            'port_desc':    row['port_desc'] or '',
+            'mgmt_ip':      row['mgmt_ip'] or '',
+            'device_type':  row['device_type'] or 'NEZARAZENO',
+            'timestamp':    row['timestamp'] or '',
+        } for row in rows]
+
+        return jsonify({
+            'neighbors':   neighbors,
+            'type_counts': type_counts,
+            'total':       len(neighbors),
+        })
+
+    except Exception as e:
+        logger.error(f"api_lldp_data error: {e}")
+        response = jsonify({'error': str(e), 'neighbors': [], 'type_counts': {}, 'total': 0})
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response, 500
+
+
+@app.route('/api/lldp_scan_now', methods=['POST'])
+@login_required
+def api_lldp_scan_now():
+    """Trigger LLDP scan on all devices in background."""
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'error': 'Admin required'}), 403
+
+    def _scan_all():
+        import snmp_helper as _sh
+        try:
+            conn = get_db()
+            cursor = conn.cursor()
+            cursor.execute('SELECT device_ip FROM poe_devices ORDER BY device_ip')
+            ips = [r['device_ip'] for r in cursor.fetchall()]
+            conn.close()
+            for ip in ips:
+                try:
+                    neighbors = _sh.scan_lldp(ip)
+                    _sh.save_lldp_to_db(ip, neighbors)
+                except Exception as ex:
+                    logger.warning(f"LLDP scan {ip}: {ex}")
+        except Exception as ex:
+            logger.error(f"LLDP scan_all error: {ex}")
+
+    import threading
+    t = threading.Thread(target=_scan_all, daemon=True)
+    t.start()
+    return jsonify({'success': True, 'message': 'LLDP scan started in background'})
+
+
 @app.route('/api/mac_vlans_data')
 @login_required
 def api_mac_vlans_data():
@@ -1293,59 +1434,31 @@ def api_mac_vlans_data():
 
         # all=1: load all MACs from all VLANs
         if all_vlans:
-            if include_down:
-                # All ports (UP+DOWN or DOWN only) across all VLANs via poe_ports
-                cursor.execute("""
-                    SELECT
-                        p.port_name, p.port_description,
-                        COALESCE(p.port_status, 2) AS port_status,
-                        p.port_vlan_id,
-                        d.device_name, d.device_ip,
-                        m.mac_address,
-                        COALESCE(m.vlan_id, p.port_vlan_id)   AS vlan_id,
-                        COALESCE(m.vlan_name, '')              AS vlan_name
-                    FROM poe_ports p
-                    LEFT JOIN poe_devices d ON p.device_ip = d.device_ip
-                    LEFT JOIN poe_mac_addresses m
-                        ON  p.device_ip = m.device_ip
-                        AND p.ifIndex   = m.ifIndex
-                        AND m.vlan_id   = p.port_vlan_id
-                    WHERE p.port_vlan_id NOT IN (1002, 1003, 1004, 1005)
-                      AND p.port_vlan_id IS NOT NULL
-                      AND p.port_vlan_id != 0
-                      AND p.port_name NOT LIKE 'Po%%'
-                      AND COALESCE(p.is_trunk, 0) = 0
-                    GROUP BY p.device_ip, p.ifIndex
-                    HAVING COUNT(DISTINCT m.mac_address) <= 10
-                    ORDER BY p.port_status ASC, vlan_id, d.device_name, p.port_name
-                """)
-            else:
-                cursor.execute("""
-                    SELECT
-                        m.mac_address, m.vlan_id, m.vlan_name,
-                        d.device_name, d.device_ip, p.port_name, p.port_description,
-                        COALESCE(p.port_status, 2) as port_status
-                    FROM poe_mac_addresses m
-                    INNER JOIN poe_ports p ON m.device_ip = p.device_ip AND m.ifIndex = p.ifIndex
-                    LEFT JOIN poe_devices d ON m.device_ip = d.device_ip
-                    WHERE m.vlan_id NOT IN (1002, 1003, 1004, 1005)
-                      AND p.port_name NOT LIKE 'Po%'
-                    GROUP BY m.device_ip, m.ifIndex
-                    HAVING COUNT(DISTINCT m.vlan_id) = 1
-                       AND COUNT(DISTINCT m.mac_address) <= 10
-                    ORDER BY m.vlan_id, d.device_name, p.port_name, m.mac_address
-                """)
+            cursor.execute("""
+                SELECT
+                    m.mac_address, m.vlan_id, m.vlan_name,
+                    d.device_name, d.device_ip, p.port_name, p.port_description,
+                    COALESCE(p.port_status, 2) as port_status
+                FROM poe_mac_addresses m
+                INNER JOIN poe_ports p ON m.device_ip = p.device_ip AND m.ifIndex = p.ifIndex
+                LEFT JOIN poe_devices d ON m.device_ip = d.device_ip
+                WHERE m.vlan_id NOT IN (1002, 1003, 1004, 1005)
+                  AND p.port_name NOT LIKE 'Po%'
+                GROUP BY m.device_ip, m.ifIndex
+                HAVING COUNT(DISTINCT m.vlan_id) = 1
+                   AND COUNT(DISTINCT m.mac_address) <= 10
+                ORDER BY m.vlan_id, d.device_name, p.port_name, m.mac_address
+            """)
             all_rows = cursor.fetchall()
             conn.close()
             macs = [{
-                'mac':              row['mac_address'] or '-',
-                'vlan_id':          row['vlan_id'],
-                'vlan_name':        row['vlan_name'] or '',
-                'device_name':      row['device_name'] or row['device_ip'] or '?',
-                'device_ip':        row['device_ip'] or '',
-                'port_name':        row['port_name'] or '?',
+                'mac': row['mac_address'], 'vlan_id': row['vlan_id'],
+                'vlan_name': row['vlan_name'] or '',
+                'device_name': row['device_name'] or row['device_ip'] or '?',
+                'device_ip': row['device_ip'] or '',
+                'port_name': row['port_name'] or '?',
                 'port_description': row['port_description'] or '',
-                'port_status':      row['port_status']
+                'port_status': row['port_status']
             } for row in all_rows]
             return jsonify({'vlans': vlans, 'macs': macs, 'total_macs': len(macs)})
 
@@ -1655,5 +1768,34 @@ if __name__ == '__main__':
     logger.info("="*60)
     
     ensure_device_changes_table()
+
+    # ── LLDP background scheduler (every 6 hours) ──────────────────────────────
+    def _lldp_scheduler():
+        import time as _time
+        import snmp_helper as _sh
+        LLDP_INTERVAL = 6 * 3600  # 6 hours
+        logger.info("LLDP scheduler started (interval: 6h)")
+        while True:
+            _time.sleep(LLDP_INTERVAL)
+            try:
+                conn = get_db()
+                cursor = conn.cursor()
+                cursor.execute('SELECT device_ip FROM poe_devices ORDER BY device_ip')
+                ips = [r['device_ip'] for r in cursor.fetchall()]
+                conn.close()
+                logger.info(f"LLDP scheduled scan: {len(ips)} devices")
+                for ip in ips:
+                    try:
+                        neighbors = _sh.scan_lldp(ip)
+                        _sh.save_lldp_to_db(ip, neighbors)
+                    except Exception as ex:
+                        logger.warning(f"LLDP scheduled scan {ip}: {ex}")
+            except Exception as ex:
+                logger.error(f"LLDP scheduler error: {ex}")
+
+    _lldp_thread = threading.Thread(target=_lldp_scheduler, daemon=True)
+    _lldp_thread.start()
+    logger.info("LLDP background scheduler started (every 6h)")
+    # ──────────────────────────────────────────────────────────────────────────
     
     app.run(host='0.0.0.0', port=4999, debug=False)
