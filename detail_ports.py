@@ -43,6 +43,17 @@ app.config['JSON_AS_ASCII'] = False
 
 DB_PATH = '/app/data/energy.db'
 DEVICES_CONFIG = '/app/config/devices.json'
+
+
+def get_device_name(ip):
+    """Read device name from devices.json — checks both 'devices' and 'slow_switches'."""
+    try:
+        with open(DEVICES_CONFIG) as f:
+            cfg = json.load(f)
+        name = cfg.get('devices', {}).get(ip) or cfg.get('slow_switches', {}).get(ip)
+        return name or 'Unknown'
+    except Exception:
+        return 'Unknown'
 AUTH_CONFIG = '/app/config/auth.json'
 
 logging.basicConfig(
@@ -357,8 +368,16 @@ def add_remove():
 @app.route('/api/devices')
 @login_required
 def api_devices():
-    """API: Get all devices"""
+    """API: Get all devices — only IPs present in devices.json"""
     try:
+        # Load known IPs from config — smazané zařízení se nevrátí
+        try:
+            with open(DEVICES_CONFIG) as f:
+                _cfg = json.load(f)
+            known_ips = set(_cfg.get('devices', {}).keys()) | set(_cfg.get('slow_switches', {}).keys())
+        except Exception:
+            known_ips = None  # fallback: show all
+
         conn = get_db()
         cursor = conn.cursor()
         
@@ -375,6 +394,9 @@ def api_devices():
         
         devices = []
         for row in cursor.fetchall():
+            # Skip IPs not in devices.json (deleted but still in DB until next scan cycle)
+            if known_ips is not None and row['device_ip'] not in known_ips:
+                continue
             devices.append({
                 'device_ip': row['device_ip'],
                 'device_name': row['device_name'],
@@ -408,9 +430,12 @@ def api_devices_list():
         with open(DEVICES_CONFIG) as f:
             config = json.load(f)
         
+        # Merge both sections so devedit shows all devices
+        all_devs = {**config.get('devices', {}), **config.get('slow_switches', {})}
         devices = []
-        for ip, name in config.get('devices', {}).items():
-            devices.append({'ip': ip, 'name': name})
+        for ip, name in all_devs.items():
+            is_slow = ip in config.get('slow_switches', {})
+            devices.append({'ip': ip, 'name': name, 'slow_switch': is_slow})
         
         # Sort by IP (numerically, not alphabetically)
         try:
@@ -438,6 +463,7 @@ def immediate_scan_device(ip, name):
             cursor = conn.cursor()
             cursor.execute('''
                 UPDATE poe_devices SET
+                    device_name = ?,
                     device_model = ?,
                     device_serial = ?,
                     poe_available = ?,
@@ -448,7 +474,7 @@ def immediate_scan_device(ip, name):
                     status = 'OK',
                     last_scan = ?
                 WHERE device_ip = ?
-            ''', (poe_data['model'], poe_data['serial'],
+            ''', (name, poe_data['model'], poe_data['serial'],
                   poe_data['poe_available'], poe_data['poe_used'],
                   poe_data['poe_remaining'], poe_data['poe_percentage'],
                   poe_data['port_count'], datetime.datetime.now().isoformat(), ip))
@@ -487,14 +513,18 @@ def api_devices_add():
 
         config['devices'][ip] = name
 
-        # Handle slow_switch flag
+        # Handle slow_switch flag — also clean up duplicate entries
         is_slow = data.get('slow_switch', False)
         if 'slow_switches' not in config:
             config['slow_switches'] = {}
         if is_slow:
             config['slow_switches'][ip] = name
+            # Remove from main devices if it was there (avoid duplicate)
+            config.get('devices', {}).pop(ip, None)
         else:
             config['slow_switches'].pop(ip, None)
+            # Ensure it's in main devices
+            config.setdefault('devices', {})[ip] = name
 
         # Sort devices by IP (numerically, not alphabetically)
         config['devices'] = sort_devices_by_ip(config['devices'])
@@ -912,14 +942,8 @@ def priority_scan_worker(ip):
         # Import inside function to avoid circular imports
         from snmp_helper import get_poe_data, save_all_ports_to_db, save_vlan_names_to_db, save_mac_addresses_to_db, scan_lldp, save_lldp_to_db
         
-        # Get device name from devices.json
-        device_name = 'Unknown'
-        try:
-            with open(DEVICES_CONFIG) as f:
-                devices = json.load(f).get('devices', {})
-                device_name = devices.get(ip, 'Unknown')
-        except Exception as e:
-            logger_priority.warning(f"Cannot load device name for {ip}: {e}")
+        # Get device name from devices.json (checks both devices + slow_switches)
+        device_name = get_device_name(ip)
         
         # Scan device
         data = get_poe_data(ip)

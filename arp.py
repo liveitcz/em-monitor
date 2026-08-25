@@ -127,7 +127,9 @@ def scan_all_devices_parallel():
         
         with open(DEVICES_PATH) as f:
             config = json.load(f)
-        devices = config.get('devices', {})
+        # Merge devices + slow_switches — slow_switches are already handled separately
+        # but we need their names; scanning rate is controlled by slow_switch_delay
+        devices = {**config.get('devices', {}), **config.get('slow_switches', {})}
         
         total = len(devices)
         logger.info(f"🚀 PROCESS POOL SCAN: {total} devices with {MAX_WORKERS} workers")
@@ -177,7 +179,7 @@ def scan_single_device(device_ip):
     try:
         with open(DEVICES_PATH) as f:
             config = json.load(f)
-        devices = config.get('devices', {})
+        devices = {**config.get('devices', {}), **config.get('slow_switches', {})}
         if device_ip not in devices:
             return
         device_name = devices[device_ip]
