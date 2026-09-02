@@ -617,11 +617,9 @@ def api_devices_remove():
                 VALUES (?, ?, ?, ?, ?)
             ''', (datetime.datetime.now().isoformat(), ip, device_name, 'ODEBRÁNO', session.get('username')))
 
-            if ip in config.get('devices', {}):
-                del config['devices'][ip]
-                if ip in config.get('slow_switches', {}):
-                    del config['slow_switches'][ip]
-
+            # Remove from BOTH sections — device may be in either or both
+            config.get('devices', {}).pop(ip, None)
+            config.get('slow_switches', {}).pop(ip, None)
             snmp_config.get('per_device', {}).pop(ip, None)
 
         conn.commit()
