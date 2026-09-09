@@ -39,7 +39,7 @@ nano config/snmp.json
 docker compose -f compose.synology.yaml up -d --build
 ```
 
-Synology NAS (GUI - Container Manager)
+### Synology NAS (GUI - Container Manager)
 Prepare directories in File Station:
 
 Create folder /docker/em_monitor/config
