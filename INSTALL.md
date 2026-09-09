@@ -8,13 +8,30 @@
 
 ## Installation
 
-### 1. Clone repository
+### Method A: Synology NAS (GUI via Container Manager)
+
+1. **Prepare Folders and Configs:**
+   * Open File Station and create directory `/docker/em_monitor/config`.
+   * Create or copy `devices.json` and `snmp.json` inside `/docker/em_monitor/config`.
+
+2. **Run Container:**
+   * Open **Container Manager** -> **Image** -> Download `liveitcz/em-monitor:latest`.
+   * Select the image and click **Run**.
+   * **Port Settings:** Local port `3013` (or any free port) -> Container port `4999`.
+   * **Volume Settings:** Map NAS folder `/docker/em_monitor/config` to container path `/app/config` (Read/Write).
+   * **Environment:** Add variable `TZ=Europe/Prague`.
+
+3. **Open Web UI:** `http://<nas-ip>:3013`
+
+---
+
+### Method B: CLI (Debian / Ubuntu / Synology SSH)
+
+#### 1. Clone repository
 
 ```bash
-git clone https://github.com/liveitcz/em-monitor.git
+git clone [https://github.com/liveitcz/em-monitor.git](https://github.com/liveitcz/em-monitor.git)
 cd em-monitor
-```
-
 ### 2. Run setup
 
 ```bash
@@ -46,9 +63,6 @@ docker compose -f compose.synology.yaml up -d --build
 
 - Debian: `http://<server-ip>:4999`
 - Synology: `http://<nas-ip>:3013`
-
-default username: admin
-default password: admin
 
 ## Config files
 
