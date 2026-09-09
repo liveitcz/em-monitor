@@ -1,8 +1,10 @@
 # Energy Monitor (EM)
 
-Web-based MAC, VLANs and PoE device mapping for Cisco switches
-
+Web-based PoE monitoring platform for Cisco switches.
 Monitors power consumption, port status and device inventory via SNMP.
+
+If you want to monitor END devices you need to enable LLDP in your network. 
+Check if END devices support LLDP feature.
 
 ---
 
@@ -21,7 +23,6 @@ docker compose up -d --build
 ```
 
 Open: `http://<server-ip>:4999`
-default credentials admin/admin
 
 ### Synology NAS
 
@@ -36,7 +37,6 @@ docker compose -f compose.synology.yaml up -d --build
 ```
 
 Open: `http://<nas-ip>:3013`
-default credentials admin/admin
 
 ---
 
