@@ -30,8 +30,10 @@
 #### 1. Clone repository
 
 ```bash
-git clone [https://github.com/liveitcz/em-monitor.git](https://github.com/liveitcz/em-monitor.git)
+git clone https://github.com/liveitcz/em-monitor.git
 cd em-monitor
+```
+
 ### 2. Run setup
 
 ```bash

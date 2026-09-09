@@ -8,7 +8,26 @@
 
 ## Instalace
 
-### 1. Stáhni repozitář
+### Metoda A: Synology NAS (Grafické rozhraní Container Manager)
+
+1. **Příprava složek a konfiguračních souborů:**
+   * Ve **File Station** vytvořte složku `/docker/em_monitor/config`.
+   * Do této složky nahrajte nebo vytvořte soubory `devices.json` a `snmp.json`.
+
+2. **Spuštění kontejneru:**
+   * Otevřete **Container Manager** -> **Obrázek** -> Stáhněte `liveitcz/em-monitor:latest`.
+   * Vyberte obrázek a klikněte na **Spustit**.
+   * **Nastavení portu:** Místní port `3013` (nebo jiný volný) -> Port kontejneru `4999`.
+   * **Nastavení svazku (Volume):** Složka na NASu `/docker/em_monitor/config` -> Cesta v kontejneru `/app/config` (Čtení/zápis).
+   * **Prostředí:** Přidejte proměnnou `TZ=Europe/Prague`.
+
+3. **Otevření webu:** `http://<ip-nas>:3013`
+
+---
+
+### Metoda B: Příkazová řádka CLI (Debian / Ubuntu / Synology SSH)
+
+#### 1. Stáhni repozitář
 
 ```bash
 git clone https://github.com/liveitcz/em-monitor.git
@@ -46,9 +65,6 @@ docker compose -f compose.synology.yaml up -d --build
 
 - Debian: `http://<ip-serveru>:4999`
 - Synology: `http://<ip-nas>:3013`
-
-default username: admin
-default password: admin
 
 ## Konfigurační soubory
 
