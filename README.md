@@ -1,10 +1,13 @@
 # Energy Monitor (EM)
 
 Web-based PoE monitoring platform for Cisco switches.
-Monitors power consumption, port status and device inventory via SNMP.
+Monitors power consumption, port status and device inventory via SNMP (MAC on ports, descriptions, etc...).
 
 If you want to monitor END devices you need to enable LLDP in your network. 
 Check if END devices support LLDP feature.
+
+Tested on Cisco switches from 29xx to 9xxx. 
+On some old switches you can see high CPUs, so better remove it from EM.
 
 ---
 
