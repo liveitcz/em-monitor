@@ -40,6 +40,7 @@ docker compose -f compose.synology.yaml up -d --build
 ```
 
 ### Synology NAS (GUI - Container Manager)
+```bash
 Prepare directories in File Station:
 
 Create folder /docker/em_monitor/config
@@ -50,6 +51,7 @@ Download image liveitcz/em-monitor:latest and click Run.
 
 Port settings: Local Port 3013 -> Container Port 4999
 Volume settings: /docker/em_monitor/config -> /app/config (Read/Write)
+```
 
 Open: http://<nas-ip>:3013
 
