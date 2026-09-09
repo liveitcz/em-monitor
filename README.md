@@ -39,7 +39,19 @@ nano config/snmp.json
 docker compose -f compose.synology.yaml up -d --build
 ```
 
-Open: `http://<nas-ip>:3013`
+Synology NAS (GUI - Container Manager)
+Prepare directories in File Station:
+
+Create folder /docker/em_monitor/config
+Place devices.json and snmp.json inside this folder.
+
+Container Manager setup:
+Download image liveitcz/em-monitor:latest and click Run.
+
+Port settings: Local Port 3013 -> Container Port 4999
+Volume settings: /docker/em_monitor/config -> /app/config (Read/Write)
+
+Open: http://<nas-ip>:3013
 
 ---
 
