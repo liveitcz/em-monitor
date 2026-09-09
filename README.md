@@ -53,7 +53,7 @@ Port settings: Local Port 3013 -> Container Port 4999
 Volume settings: /docker/em_monitor/config -> /app/config (Read/Write)
 ```
 
-Open: http://<nas-ip>:3013
+Open: `http://<nas-ip>:3013`
 
 ---
 
